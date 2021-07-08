@@ -12,7 +12,7 @@ variables:
   # Using VecteorCAST Change Based Testing otherwise set to ""
   VC_useCBT: "--incremental"
 
-  sauce = ""
+  sauce:  ""
 
 pool: TimS-VCAST
 
