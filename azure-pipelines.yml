@@ -21,8 +21,5 @@ name: vectorcast
 steps:
 - script: |
     echo "##vso[task.setvariable variable=sauce;]crushed tomatoes"
-    $(VC_UseCILicense)
-    set VCAST_DEMO_SRC_BASE=%CD%\CurrentRelease
-    set path=%path%;c:\vector\tools\gnat\2017\bin
-    %VECTORCAST_DIR%\vpython.exe .\azure\vc_scripts\azure_exec.py "$(VC_Manage_Project)" $(VC_useCBT) --execute --metrics --reports --buildlog complete_build.log
+    %VECTORCAST_DIR%\vpython.exe .\azure\vc_scripts\generate_azure_yaml.py "$(VC_Manage_Project)"
   displayName: 'VectorCAST Build-Execute'
