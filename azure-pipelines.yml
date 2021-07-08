@@ -2,6 +2,8 @@
 trigger:
 - master
 
+pool: TimS-VCAST
+
 extends:
   template: start.yml
   parameters:
