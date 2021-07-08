@@ -13,4 +13,4 @@ extends:
       - task: CmdLine@2
         displayName: Test 3 - Will Fail
         inputs:
-          script: echo "Script Test"
+          script: 'echo "Script Test"'
