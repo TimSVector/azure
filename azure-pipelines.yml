@@ -1,16 +1,25 @@
-# File: azure-pipelines.yml
-trigger:
-- master
+trigger: none
+  
+variables:
+  GIT_CLEAN_FLAGS: none
+  
+  # Relative path from checkout to the VectorCAST Project
+  VC_Manage_Project: "./vcast_tutorial_project.vcm"
 
-extends:
-  template: start.yml
-  parameters:
-    buildSteps:  
-      - bash: echo Test #Passes
-        displayName: succeed
-      - bash: echo "Test"
-        displayName: succeed
-      - task: CmdLine@2
-        displayName: Test 3 - Will Fail
-        inputs:
-          script: echo "Script Test"
+  # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
+  VC_UseCILicense: ""
+
+  # Using VecteorCAST Change Based Testing otherwise set to ""
+  VC_useCBT: "--incremental"
+
+  sauce:  ""
+
+pool: TimS-VCAST
+
+name: vectorcast
+
+steps:
+- script: |
+    echo "##vso[task.setvariable variable=sauce;]crushed tomatoes"
+    %VECTORCAST_DIR%\vpython.exe .\azure\vc_scripts\generate_azure_yaml.py "$(VC_Manage_Project)"
+  displayName: 'VectorCAST Build-Execute'
