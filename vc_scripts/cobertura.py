@@ -89,31 +89,6 @@ def getFileXML(testXml, coverAPI):
         
     return lines
 
-#  <coverage branch-rate="0.621853898097" line-rate="0.0848430253895" timestamp="1356956242" version="gcovr 2.5-prerelease (r2774)">
-# XX  <sources>
-# XX     <source>
-# XX       C:\gitlab\project
-# XX     </source>
-# XX   </sources>
-#    <packages>
-#      <package branch-rate="0.607142857143" complexity="0.0" line-rate="0.22962962963" name="Common">
-#        <classes>
-#          <class branch-rate="0.5" complexity="0.0" filename="CommonLibrary\ProfilerTest.cpp" line-rate="0.0869565217391" name="BasicProfilerTest_cpp">
-#          <lines>
-#            <line branch="false" hits="0" number="30"/>
-#            <line branch="false" hits="0" number="32"/>
-#            <line branch="true" condition-coverage="50% (2/4)" hits="3" number="161">
-#            <conditions>
-#              <condition coverage="50%" number="0" type="jump"/>
-#            </conditions>
-#            </line>
-#            <line branch="false" hits="0" number="125"/>
-#          </lines>
-#          </class>
-#        </classes>
-#      </package>     
-#    </packages>     
-#  </coverage>
 
 def getLineCoverageElementXML(lines, lineno):
 
@@ -165,8 +140,6 @@ def getBranchCoverageElementXML(lines, lineno, percent):
 
 def procesCoverage(coverXML, coverApi):             
     
-    
-    ## print coverApi
     lines = getFileXML(coverXML, coverApi)
     
     for statement in coverApi.statements:
@@ -214,7 +187,11 @@ def runCoverageResultsMP(classes, mpFile):
 
     vcproj = VCProject(mpFile)
     api = vcproj.cover_api
+
+    return runCoverageResults(classes,api)
     
+def runCoverageResults(classes, api):
+
     total_br = 0
     total_st = 0
     cov_br   = 0 
@@ -223,6 +200,9 @@ def runCoverageResultsMP(classes, mpFile):
 
     
     for file in api.File.all():
+        print("DEBUG: %s" % file)
+        print("DEBUG: %s" % file.metrics)
+
         total_br += file.metrics.branches
         total_st += file.metrics.statements
         cov_br   += file.metrics.covered_branches
@@ -264,9 +244,9 @@ def generateCoverageResults(inFile):
         api=UnitTestApi(inFile)
         #runCoverageResultsUT(classes, api)
     elif inFile.endswith(".vcp"):
-        api=CoverAPI(inFile)
-        runCoverageCover(classes, api)
-    else:        
+        api=CoverApi(inFile)
+        total_st, cov_st, total_br, cov_br, branch_rate, line_rate, complexity  = runCoverageResults(classes, api)
+    else:
         total_st, cov_st, total_br, cov_br, branch_rate, line_rate, complexity  = runCoverageResultsMP(classes, inFile)
         
     coverages.attrib['branch-rate'] = str(branch_rate)
