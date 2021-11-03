@@ -1,0 +1,53 @@
+stages: [build-execute, reporting, check-logs]
+    
+variables:
+    GIT_CLEAN_FLAGS: none
+    VC_Manage_Project: "vcast_tutorial_project"
+    VC_UseCILicense: ""
+    VC_useCBT: ""
+
+build-execute-vectorcast_mingw_c-testsuite-database:
+  stage: build-execute
+  script: 
+    - Start-Process -NoNewWindow -wait ./setenv.bat
+    - Start-Process -NoNewWindow -wait $env:VECTORCAST_DIR\vpython.exe  -ArgumentList ".\vc_scripts\gitlab_exec.py "$VC_Manage_Project" $VC_UseCILicense $VC_useCBT --level VectorCAST_MinGW_C/TestSuite --environment DATABASE --execute"
+    
+  tags:
+    - VectorCAST_MinGW_C
+
+build-execute-vectorcast_mingw_c-testsuite-manager:
+  stage: build-execute
+  script: 
+    - Start-Process -NoNewWindow -wait ./setenv.bat
+    - Start-Process -NoNewWindow -wait $env:VECTORCAST_DIR\vpython.exe  -ArgumentList ".\vc_scripts\gitlab_exec.py "$VC_Manage_Project" $VC_UseCILicense $VC_useCBT --level VectorCAST_MinGW_C/TestSuite --environment MANAGER --execute"
+    
+  tags:
+    - VectorCAST_MinGW_C
+
+reporting:
+  stage: reporting
+  script: 
+    - Start-Process -NoNewWindow -wait ./setenv.bat
+    - Start-Process -NoNewWindow -wait $env:VECTORCAST_DIR\vpython.exe  -ArgumentList ".\vc_scripts\gitlab_exec.py "$VC_Manage_Project" $VC_UseCILicense $VC_useCBT --reports --metrics"
+    
+  tags:
+    - vectorcast
+    
+  artifacts:
+    untracked: false
+    expire_in: 30 days    
+    paths:
+      - xml_data/test_results*.xml
+      - xml_data/coverage_results*.xml
+      - html_reports/*.html
+      - ./*.html
+    reports:
+      junit: xml_data/test_results*.xml
+      cobertura: xml_data/coverage_results*.xml
+
+check-logs:
+  stage: check-logs
+  script: "echo check-logs"
+  tags:
+    - vectorcast
+

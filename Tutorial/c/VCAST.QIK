@@ -1,0 +1,35 @@
+--  QuickParse File Version: EDG_6_2  --
+HOME_DIRECTORY C:\Users\vaprti\vector\github\azure\Tutorial\c
+BEGIN_RECORD database.c
+CHECKSUM  2970500269
+BLACKLIST FALSE
+DEFINED_OBJECTS
+   Get_Table_Record
+   Update_Table_Record
+CALLED_OBJECTS
+STATIC_MEMBERS_DECLARED
+STATIC_MEMBERS_NEEDED
+GLOBAL_OBJECTS_NEEDED
+GLOBAL_OBJECTS_DEFINED
+   Table_Data
+END_RECORD database.c
+BEGIN_RECORD manager.c
+CHECKSUM 3203536983
+BLACKLIST FALSE
+DEFINED_OBJECTS
+   Add_Included_Dessert
+   Add_Party_To_Waiting_List
+   Clear_Table
+   Get_Check_Total
+   Get_Next_Party_To_Be_Seated
+   Place_Order
+   reset_cpu
+CALLED_OBJECTS
+   Get_Table_Record
+   Update_Table_Record
+   VCAST_driver_termination
+STATIC_MEMBERS_DECLARED
+STATIC_MEMBERS_NEEDED
+GLOBAL_OBJECTS_NEEDED
+GLOBAL_OBJECTS_DEFINED
+END_RECORD manager.c
