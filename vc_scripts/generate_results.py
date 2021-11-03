@@ -375,7 +375,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     try:
-        if "19.sp1" in open(os.path.join(os.environ['VECTORCAST_DIR'],"DATA/tools_version.txt").read):
+        if "19.sp1" in open(os.path.join(os.environ['VECTORCAST_DIR'],"DATA/tools_version.txt").read()):
             # custom report patch for SP1 problem - should be fixed in future release      
             old_init = CustomReport._post_init
             def new_init(self):

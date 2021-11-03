@@ -8,34 +8,6 @@ static name_type WaitingList[10];
 static unsigned int WaitingListSize = 0;
 static unsigned int WaitingListIndex = 0;
 
-
-void reset_cpu(void) 
-{
-#ifdef VECTORCAST
-/*VCAST_DONT_INSTRUMENT_START*/
-    {
-        enum vCAST_globals_display_type 
-        {
-            vCAST_EACH_EVENT,
-            vCAST_RANGE_ITERATION,
-            vCAST_SLOT_ITERATION,
-            vCAST_TESTCASE
-        };
-
-        void VCAST_driver_termination(int status, int eventCode);
-        void vCAST_SET_HISTORY (int VC_U, int VC_S);
-        void vCAST_STORE_GLOBAL_ASCII_DATA (void);
-        extern unsigned short VCAST_GLOBALS_DISPLAY;
-        
-        VCAST_driver_termination(0,1008);
-    }
-/*VCAST_DONT_INSTRUMENT_END*/
-#endif
-
-    // do something to reset to cpu
-}
-
-
 /* This function will add a free dessert to specific orders based on the 
    entree, salad, and beverage choice */
 void Add_Included_Dessert(struct order_type* Order)
@@ -88,8 +60,6 @@ int Place_Order(table_index_type Table,
     }
   
   Update_Table_Record(Table, Table_Data);
-
-  reset_cpu();
 
   return 0;
 }
