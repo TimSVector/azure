@@ -22,7 +22,9 @@ class ParallelExecute(object):
         parser = argparse.ArgumentParser()        
         # running from manage
         
-        parser.add_argument('--project', '-p',     help='Manager Project Name')
+        parser.add_argument('--project', '-p',     help='VectorCAST Project Project Name')
+        parser.add_argument('--compiler','-c',     help='VectorCAST Project Compiler Node', default=None)
+        parser.add_argument('--testsuite','-t',     help='VectorCAST Project TestSuite Node', default=None)
         parser.add_argument('--incremental', help='Using build-execute incremental (CBT)', action="store_true")
         parser.add_argument('--dryrun',      help='Dry Run without build/execute', action="store_true")
         parser.add_argument('--verbose',     help='Dry Run without build/execute', action="store_true")
@@ -36,7 +38,10 @@ class ParallelExecute(object):
 
         self.jobs = args.jobs
         self.dryrun = args.dryrun
-            
+        
+        self.compiler = args.compiler 
+        self.testsuite = args.testsuite
+        
         if self.manageProject is None:
             print ("\n** Use either --project [Manage Project Name] or enviroment variable VCV_ENVIRONMENT_FILE to specify the manage project name")
             sys.exit()
@@ -302,7 +307,6 @@ class ParallelExecute(object):
         self.waiting_execution_queue = {}
 
         for env in api.Environment.all():
-
             count = int(self.jobs)
             def_list = env.options['enums']['C_DEFINE_LIST'][0]
             if "VCAST_PARALLEL_PROCESS_COUNT" in def_list:
@@ -320,12 +324,15 @@ class ParallelExecute(object):
                 isSystemTest = False
                 
             compiler = env.compiler.name
+
             if compiler in self.parallel_exec_info:
-                env_list = self.parallel_exec_info[compiler][1]
-                full_name = env.compiler.name + " " + env.testsuite.name + " " + env.name
-                env_list.append([full_name, isSystemTest])
-                self.waiting_execution_queue[compiler] = Queue()
-                
+                if self.compiler == None or self.compiler==compiler:
+                    if self.testsuite == None or self.testsuite==env.testsuite.name:
+                        env_list = self.parallel_exec_info[compiler][1]
+                        full_name = env.compiler.name + " " + env.testsuite.name + " " + env.name
+                        env_list.append([full_name, isSystemTest])
+                        self.waiting_execution_queue[compiler] = Queue()
+                    
                 #waiting_execution_queue[compiler].append(full_name)
                 
 
