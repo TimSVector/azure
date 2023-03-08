@@ -15,6 +15,10 @@ except ImportError:
         from queue import Queue, Empty  # python 3.x
  
 VCD = os.environ['VECTORCAST_DIR']
+MONITOR_SLEEP=10
+
+VERSION="v0.1"
+VERSION_DATE="2022-11-28"
 
 class ParallelExecute(object):
     def __init__(self):
@@ -29,6 +33,8 @@ class ParallelExecute(object):
         parser.add_argument('--dryrun',      help='Dry Run without build/execute', action="store_true")
         parser.add_argument('--verbose',     help='Dry Run without build/execute', action="store_true")
         parser.add_argument('--jobs', '-j',     help='Number of concurrent jobs (default = 1)', default="1")
+        parser.add_argument('--prioritize', '-pr', help='Comma separated list of environments to add to front of the que', default=None)
+        parser.add_argument('--tc_order', '-tc', help='Add environments to que based on # of testcases', action="store_true")
         args = parser.parse_args()
         
         try:
@@ -38,6 +44,13 @@ class ParallelExecute(object):
 
         self.jobs = args.jobs
         self.dryrun = args.dryrun
+        self.tc_order = args.tc_order
+
+        if args.prioritize == None:
+            self.priority_list = []
+        else:
+            self.priority_list = args.prioritize.split(',')
+            print("Adding the following environments to the top of the que: " + ",".join(self.priority_list))
         
         self.compiler = args.compiler 
         self.testsuite = args.testsuite
@@ -98,10 +111,13 @@ class ParallelExecute(object):
             " --output " + "_".join([compiler, testsuite, env])+ "_rebuild.html"
             
 
-        build_log = open(".".join(["build",compiler, testsuite, env,"log"]),"w")
+        log_name = ".".join(["build",compiler, testsuite, env,"log"])
+        build_log = open(log_name,"w")
         
         start_time = time.time()
         if not self.dryrun:
+            if self.verbose:
+                print("\nStarting an environment job for " + env + " environment.  Exec Command:\n\t" + exec_cmd)
             process = subprocess.Popen(exec_cmd, shell=True, stdout=build_log, stderr=build_log)    
             process.wait()
         else:
@@ -114,9 +130,15 @@ class ParallelExecute(object):
         uptime = end_time - start_time
         human_uptime = str(timedelta(seconds=int(uptime)))
         self.jobs_run_time[full_name] = human_uptime
-        
 
         build_log.close()
+
+        if self.verbose:
+            with open(log_name, 'r', encoding='utf-8') as bldlog:
+                if "Environment built Successfully" not in bldlog.read():
+                    print("\nERROR!!! Environment " + env + " not built successfully!  See " + log_name + " for more details")
+                else:
+                    print("\nCompleted execution of " + env + " environment.  Run Time was  " + human_uptime + ".")
         
         #print ("Harness Loading/Execution", full_name, "Complete")
         exec_queue.get()
@@ -143,14 +165,18 @@ class ParallelExecute(object):
             q_entry =  queue.get()
             env = q_entry[0]
             isSystemTest = q_entry[1]
+            
+            parallel_exec_queue.put(env)
+
             self.th_lock_acquire()
             self.currently_executing_jobs.append("/".join(env.split()))
             self.th_lock_release()
-            
-            parallel_exec_queue.put(env)
+
             t = Thread(target=self.run_env, args=[env, queue, parallel_exec_queue, isSystemTest])
             t.daemon = True # thread dies with the program
             t.start()
+
+            time.sleep(2)
 
         queue.join()
         
@@ -159,7 +185,7 @@ class ParallelExecute(object):
     def monitor_jobs(self):
         
         while self.running_jobs != 0:
-            print ("\n\nWaiting on jobs (", self.running_jobs , len(self.currently_executing_jobs), "}")
+            print ("\n\nWaiting on jobs (", self.running_jobs , len(self.currently_executing_jobs), ")")
             print ("===============\n  ")
             si = self.currently_executing_jobs
             si.sort()
@@ -170,7 +196,7 @@ class ParallelExecute(object):
                 if qsz > 0:
                     print ("  >> ", compiler, "has", qsz,  "environment(s) in queue")
             
-            time.sleep(3)
+            time.sleep(MONITOR_SLEEP)
 
         print ("waiting for jobs to finalize"    )
         self.compiler_exec_queue.join()
@@ -286,6 +312,30 @@ class ParallelExecute(object):
             if os.path.exists(file):
               shutil.move(file, "rebuild_reports/"+file)  
               
+    def get_testcase_list(self,env_list):
+        new_env_list = []
+        temp_env_list = []
+        for env in env_list:
+            temp_env_list.append([env,self.get_testcase_count(env)])
+        print("\nSorted Environment List:\n")
+        for i in sorted(temp_env_list,key=lambda item: item[1],reverse=True):
+            print("    Env Name: " + i[0].name + ",\t\tTestcases: " + str(i[1]))
+            new_env_list.append(i[0])
+        print("\n")
+        return new_env_list
+
+    def get_testcase_count(self, env):
+        count=0
+        for efile in env.file_list:
+            if '.tst' in efile:
+                test_file = efile
+                break
+        with open(test_file, 'r', encoding='utf-8') as tst:
+            for line in tst:
+                if 'TEST.NAME' in line:
+                    count += 1
+        return count
+
     def cleanup(self):
                 
         print ("\n\n")
@@ -293,7 +343,8 @@ class ParallelExecute(object):
         build_log_data = ""
         for file in glob.glob("build*.log"):
             build_log_data += "\n".join(open(file,"r").readlines())
-            os.remove(file)
+            if not self.verbose:
+                os.remove(file)
             
         open(self.mpName + "_build.log","w", encoding="utf-8").write(build_log_data)
         
@@ -306,7 +357,12 @@ class ParallelExecute(object):
         self.parallel_exec_info = {}
         self.waiting_execution_queue = {}
 
-        for env in api.Environment.all():
+        if self.tc_order:
+            testcase_list = self.get_testcase_list(api.Environment.all())
+        else:
+            testcase_list = api.Environment.all()
+
+        for env in testcase_list:
             count = int(self.jobs)
             def_list = env.options['enums']['C_DEFINE_LIST'][0]
             if "VCAST_PARALLEL_PROCESS_COUNT" in def_list:
@@ -317,7 +373,7 @@ class ParallelExecute(object):
                 
             self.parallel_exec_info[env.compiler.name] = (count, [])
 
-        for env in api.Environment.all():
+        for env in testcase_list:
             if env.system_tests: 
                 isSystemTest = True
             else:
@@ -330,7 +386,10 @@ class ParallelExecute(object):
                     if self.testsuite == None or self.testsuite==env.testsuite.name:
                         env_list = self.parallel_exec_info[compiler][1]
                         full_name = env.compiler.name + " " + env.testsuite.name + " " + env.name
-                        env_list.append([full_name, isSystemTest])
+                        if env.name in self.priority_list:
+                            env_list.insert(0,[full_name, isSystemTest])
+                        else:
+                            env_list.append([full_name, isSystemTest])
                         self.waiting_execution_queue[compiler] = Queue()
                     
                 #waiting_execution_queue[compiler].append(full_name)
@@ -342,9 +401,13 @@ class ParallelExecute(object):
                 compiler, testsuite, env = item[0].split()
                 self.waiting_execution_queue[compiler].put(item)
                 
-
         ## start threads that start threads
         self.compiler_exec_queue = Queue()
+
+        ## create the directory structure in the manage project before building
+        exec_cmd = VCD + "/manage --project " + self.manageProject + " --status"
+        process = subprocess.Popen(exec_cmd, shell=True)
+        process.wait()
 
         for compiler in self.waiting_execution_queue:
             max = self.parallel_exec_info[compiler][0]
@@ -362,5 +425,6 @@ class ParallelExecute(object):
         self.cleanup()
         
 if __name__ == '__main__':
+    print ("VectorCAST parallel_build_execute.py ", VERSION, "  ", VERSION_DATE)
     ParallelExecute().doit()
 

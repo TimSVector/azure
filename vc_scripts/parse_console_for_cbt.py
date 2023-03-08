@@ -36,11 +36,11 @@ simpleTestIndex = 2
 class ParseConsoleForCBT(object):
     def __init__(self, verbose = False):
         self.environmentDict = {}
+        self.environmentDict["BLANK"] = [{"BLANK"},{"BLANK"},{"BLANK"}]
         self.verbose = verbose
 
     def checkForSave(self, compoundTests, initTests, simpleTestcases):
         if len(compoundTests) > 0 or len(initTests) > 0 or  len(simpleTestcases) > 0:
-            #print ("saved", compoundTests, len(compoundTests) , initTests, len(initTests), simpleTestcases, len(simpleTestcases))
             return True
         else:
             return False
@@ -118,12 +118,13 @@ class ParseConsoleForCBT(object):
                     fileName = ""
                     func = ""
                     try:
-                        fileName, func = line.split()[2].split(".",1)
+                        line = line.replace("test cases","").rstrip()
+                        fileName, func = line.split(" ",2)[-1].split(".",1)
                     except:
                         fileName = line.split()[2].split(".",1)[0]
 
-                    # Running all <<COMPOUND>> test cases
-                    if "Running all <<COMPOUND>> test cases" in line:
+                    # Running all <<COMPOUND>>
+                    if "Running all <<COMPOUND>>" in line:
                         runningCompound = True
                         runningInits = False
 
@@ -185,7 +186,9 @@ class ParseConsoleForCBT(object):
 
 if __name__ == '__main__':
     
-    buildLogData = open(sys.argv[1],"r").readlines()
+    with open(sys.argv[1],"r") as fd:
+        buildLogData = fd.readlines()
+        
     parser = ParseConsoleForCBT(True)
     parser.parse(buildLogData)
     #pprint(parser.parse(buildLogData), width=132)

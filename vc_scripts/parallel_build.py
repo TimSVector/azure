@@ -118,9 +118,9 @@ class ParallelBuild(object):
             os.remove(file)
             
         try:       
-            open("complete_build.log","w", encoding="utf-8").write(unicode(build_log_data))
+            open(self.reportName + "_build.log","w", encoding="utf-8").write(unicode(build_log_data))
         except:
-            open("complete_build.log","w").write(build_log_data)
+            open(self.reportName + "_build.log","w").write(build_log_data)
             
         print(build_log_data)
 
