@@ -15,10 +15,10 @@ except ImportError:
         from queue import Queue, Empty  # python 3.x
  
 VCD = os.environ['VECTORCAST_DIR']
-MONITOR_SLEEP=10
+MONITOR_SLEEP=1
 
-VERSION="v0.1"
-VERSION_DATE="2022-11-28"
+VERSION="v0.2"
+VERSION_DATE="2023-09-10"
 
 class ParallelExecute(object):
     def __init__(self):
@@ -35,6 +35,7 @@ class ParallelExecute(object):
         parser.add_argument('--jobs', '-j',     help='Number of concurrent jobs (default = 1)', default="1")
         parser.add_argument('--prioritize', '-pr', help='Comma separated list of environments to add to front of the que', default=None)
         parser.add_argument('--tc_order', '-tc', help='Add environments to que based on # of testcases', action="store_true")
+        parser.add_argument('--envlist', '-e', help='Add a file with a list of environment [compiler/testsuite/environment] to build-execute', default=None)
         args = parser.parse_args()
         
         try:
@@ -43,6 +44,16 @@ class ParallelExecute(object):
             self.manageProject = args.project
 
         self.jobs = args.jobs
+        if self.jobs == "0":
+            self.jobs = "1"
+            
+        self.envlist = None
+        if args.envlist != None:
+            if os.path.exists(args.envlist):
+                self.envlist = []
+                with open(args.envlist,"r") as fd:
+                    self.envlist = fd.readlines()
+                                
         self.dryrun = args.dryrun
         self.tc_order = args.tc_order
 
@@ -176,7 +187,8 @@ class ParallelExecute(object):
             t.daemon = True # thread dies with the program
             t.start()
 
-            time.sleep(2)
+            # sleep the main thread to get the newly spawned thread a change to get running
+            time.sleep(.2)
 
         queue.join()
         
@@ -312,7 +324,7 @@ class ParallelExecute(object):
             if os.path.exists(file):
               shutil.move(file, "rebuild_reports/"+file)  
               
-    def get_testcase_list(self,env_list):
+    def get_testcase_list(self,env_list):            
         new_env_list = []
         temp_env_list = []
         for env in env_list:
@@ -359,10 +371,21 @@ class ParallelExecute(object):
 
         if self.tc_order:
             testcase_list = self.get_testcase_list(api.Environment.all())
+        elif self.envlist:
+            testcase_list = []
+            for item in self.envlist:
+                compiler, testsuite, environment = item.rstrip().split("/")
+                act_env = api.Environment.filter(compiler__name__equals=compiler,
+                    testsuite__name__equals=testsuite,
+                    name__equals=environment)
+                testcase_list.append(act_env[0])
+                
         else:
             testcase_list = api.Environment.all()
-
+            
         for env in testcase_list:
+            if not env.is_active:                
+                continue
             count = int(self.jobs)
             def_list = env.options['enums']['C_DEFINE_LIST'][0]
             if "VCAST_PARALLEL_PROCESS_COUNT" in def_list:
@@ -394,6 +417,7 @@ class ParallelExecute(object):
                     
                 #waiting_execution_queue[compiler].append(full_name)
                 
+        api.close()
 
         for entry in self.parallel_exec_info:
             count = self.parallel_exec_info[entry][0]

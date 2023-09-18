@@ -330,10 +330,9 @@ class GenerateManageXml(BaseGenerateXml):
 #
 class GenerateXml(BaseGenerateXml):
 
-    def __init__(self, FullManageProjectName, build_dir, env, compiler, testsuite, cover_report_name, jenkins_name, unit_report_name, jenkins_link, jobNameDotted, verbose = False, cbtDict= None):
+    def __init__(self, FullManageProjectName, build_dir, env, compiler, testsuite, cover_report_name, jenkins_name, unit_report_name, jenkins_link, jobNameDotted, verbose = False):
         super(GenerateXml, self).__init__(cover_report_name, verbose)
 
-        self.cbtDict = cbtDict
         self.FullManageProjectName = FullManageProjectName
         
         ## use hash code instead of final directory name as regression scripts can have overlapping final directory names
@@ -481,7 +480,7 @@ class GenerateXml(BaseGenerateXml):
                         errors += 1  
                         self.failed_count += 1
         api.close()            
-		
+        
         self.fh.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
         self.fh.write("<testsuites>\n")
         self.fh.write("    <testsuite errors=\"%d\" tests=\"%d\" failures=\"%d\" name=\"%s\" id=\"1\">\n" %
@@ -532,31 +531,13 @@ class GenerateXml(BaseGenerateXml):
 
         start_tdo = datetime.now()
         end_tdo   = None
-        # If cbtDict is None, no build log was passed in...don't mark anything as skipped 
-        if self.cbtDict == None:
-            tcSkipped = False 
-            
-        # else there is something check , if the length of cbtDict is greater than zero
-        elif len(self.cbtDict) > 0:
-            tcSkipped, start_tdo, end_tdo = self.was_test_case_skipped(tc,"/".join([unit_name, func_name, tc.name]),isSystemTest)
-            
-        # finally - there was something to check, but it was empty
-        else:
-            tcSkipped = True
-         
+        tcSkipped = False 
+                     
         if end_tdo:
             deltaTimeStr = str((end_tdo - start_tdo).total_seconds())
         else:
             deltaTimeStr = "0.0"
 
-        testcaseString ="""
-        <testcase name="%s" classname="%s" time="%s">
-            %s
-            <system-out>
-%s                     
-            </system-out>
-        </testcase>
-"""
         unit_name = escape(unit_name, quote=False)
         func_name = escape(func_name, quote=True)
         tc_name = escape(tc.name, quote=False)
@@ -592,10 +573,7 @@ class GenerateXml(BaseGenerateXml):
                 exp_pass += summary.control_flow_total - summary.control_flow_fail
                 exp_total += summary.control_flow_total + summary.signals + summary.unexpected_exceptions
 
-            result = self.__get_testcase_execution_results(
-                tc,
-                classname,
-                tc_name_full)
+            result = ""
                        
             if tc.testcase_status == "TCR_STRICT_IMPORT_FAILED":
                 result += "\nStrict Test Import Failure."
@@ -614,13 +592,14 @@ class GenerateXml(BaseGenerateXml):
             status = "PASS"
             extraStatus = ""
 
-        msg = "{} {} / {}  \n\nExecution Report:\n {}".format(status, exp_pass, exp_total, result)
+        testcaseString ="""
+        <testcase name="%s" classname="%s" time="%s">
+            %s
+        </testcase>
+"""
+
         
-        msg = escape(msg, quote=False)
-        msg = msg.replace("\"","")
-        msg = msg.replace("\n","&#xA;")
-        
-        self.fh.write(testcaseString % (tc_name_full, classname, deltaTimeStr, extraStatus, msg))
+        self.fh.write(testcaseString % (tc_name_full, classname, deltaTimeStr, extraStatus))
 
 #
 # Internal - write the end of the jUnit XML file and close it
@@ -749,69 +728,6 @@ class GenerateXml(BaseGenerateXml):
         self.start_cov_file_environment()
         self.write_cov_units()
         self.end_cov_file_environment()
-
-    def was_test_case_skipped(self, tc, searchName, isSystemTest):
-        import sys, pprint
-        try:
-            if isSystemTest:
-                compoundTests, initTests,  simpleTestcases = self.cbtDict[self.hashCode]
-				# use tc.name because system tests aren't for a specific unit/function
-                if tc.name in simpleTestcases.keys():
-                    return [False, simpleTestcases[tc.name][0], simpleTestcases[tc.name][1]]
-                else:
-                    self.__print_test_case_was_skipped(searchName, tc.passed)
-                    return [True, None, None]
-            else:
-                #Failed import TCs don't get any indication in the build.log
-                if tc.testcase_status == "TCR_STRICT_IMPORT_FAILED":
-                    return [False, None, None]
-                    
-                compoundTests, initTests,  simpleTestcases = self.cbtDict[self.hashCode]
-                                
-                #Recursive Compound don't get any named indication in the build.log
-                if tc.kind == TestCase.KINDS['compound'] and (tc.testcase_status == "TCR_RECURSIVE_COMPOUND" or searchName in compoundTests.keys()):
-                    return [False, compoundTests[searchName][0], compoundTests[searchName][1]]
-                elif tc.kind == TestCase.KINDS['init'] and searchName in initTests.keys():
-                    return [False, initTests[searchName][0], initTests[searchName][1]]
-                elif searchName in simpleTestcases.keys() or tc.testcase_status == "TCR_NO_EXPECTED_VALUES":
-                    #print ("found" , self.hashCode, searchName, str( simpleTestcases[searchName][1] - simpleTestcases[searchName][0]))
-                    return [False, simpleTestcases[searchName][0], simpleTestcases[searchName][1]]
-                else:
-                    self.__print_test_case_was_skipped(searchName, tc.passed)
-                    return [True, None, None]
-        except KeyError:
-            self.__print_test_case_was_skipped(tc.name, tc.passed)
-            return [True, None, None]
-        except Exception as e: 
-            if self.print_exc:
-                pprint.pprint ("CBT Dictionary: \n" + self.cbtDict, width = 132)
-
-    def __get_testcase_execution_results(self, tc, classname, tc_name):
-        report_name_hash =  '.'.join(
-            ["execution_results", classname, tc_name])
-        # Unicode-objects must be encoded before hashing in Python 3
-        if sys.version_info[0] >= 3:
-            report_name_hash = report_name_hash.encode('utf-8')
-
-        report_name = hashlib.md5(report_name_hash).hexdigest()
-
-        try:
-            self.api.report(
-                testcases=[tc],
-                single_testcase=True,
-                report_type="Demo",
-                formats=["TEXT"],
-                output_file=report_name,
-                sections=[ "TESTCASE_SECTIONS"],
-                testcase_sections=["EXECUTION_RESULTS"])
-            with open(report_name,"r") as f:
-                out = f.read()
-
-            os.remove(report_name)
-        except:
-            out = "No execution results found"
-
-        return out
 
     def __print_test_case_was_skipped(self, searchName, passed):
         if self.verbose:

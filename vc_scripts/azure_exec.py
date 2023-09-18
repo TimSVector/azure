@@ -25,13 +25,13 @@
 import os, subprocess,argparse, glob, sys
 
 from managewait import ManageWait
-from parse_console_for_cbt import ParseConsoleForCBT
 import generate_results 
 import cobertura
+import shutil
 
 
 class AzureExecute(object):
-    def __init__(self, ManageProject, useCILicense, useCBT, level, environment, verbose, print_exc, timing, buildlog):
+    def __init__(self, ManageProject, useCILicense, useCBT, level, environment, verbose, print_exc, timing):
 
         # setup default values
         self.print_exc = print_exc
@@ -61,7 +61,7 @@ class AzureExecute(object):
         self.reportsName = ""
         self.env_option = ""
         self.level_option = ""
-        self.build_log_name = buildlog
+        self.build_log_name = "complete_build.log"
 
         # if a manage level was specified...
         if level:        
@@ -93,31 +93,12 @@ class AzureExecute(object):
         self.manageWait = ManageWait(self.verbose, "", 30, 1, self.FullMP, self.useCI)
 
     def runMetrics(self):
-        # read in build log for CBT analysis               
-        if os.path.exists(self.build_log_name):
-            print ("Using build log: " + self.build_log_name)
-            self.build_log = open(self.build_log_name,"r").read()
-            
-        else:
-            print ("Build log not found. Trying to generate complete log from individual build logs")
-            self.build_log = ""
-            for file in glob.glob("build*.log"):
-                if self.verbose: print(file)
-                self.build_log += open(file,"r").read() + "\n" 
-            
-        cbt = ParseConsoleForCBT(args.verbose)
-        cbtDict = None
         
-        # don't show skipped tests as Azure shows them as "Other" instead of skipped
-#        if self.build_log:
-#            cbtDict = cbt.parse(self.build_log)
-#        else:
-#            print("Could not find any build logs...skipping CBT Analysis")
-            
         generate_results.verbose = self.verbose
         generate_results.print_exc = self.print_exc
         generate_results.timing = self.timing
-        generate_results.buildReports(self.FullMP,self.level,self.environment, True, self.timing, cbtDict)
+        generate_results.timing = self.timing
+        generate_results.buildReports(self.FullMP,self.level,self.environment, self.timing)
 
         for file in glob.glob("xml_data/coverage_results_*.*"):
             try:
@@ -131,6 +112,8 @@ class AzureExecute(object):
         self.manageWait.exec_manage_command ("--create-report=aggregate     --output=" + self.mpName + "_aggregate_report.html")
         self.manageWait.exec_manage_command ("--create-report=metrics       --output=" + self.mpName + "_metrics_report.html")
         self.manageWait.exec_manage_command ("--create-report=environment   --output=" + self.mpName + "_environment_report.html")
+        self.manageWait.exec_manage_command ("--full-status=" + self.mpName + "_full_status_report.html")
+        print("Creating report in " + self.mpName + "_full_status_report.html")
 
     def runExec(self):
 
@@ -157,7 +140,6 @@ if __name__ == '__main__':
     parser.add_argument('--metrics', help='Run the metrics for VectorCAST Project', action="store_true", default = False)
     parser.add_argument('--reports', help='Run the reports for VectorCAST Project', action="store_true", default = False)
     parser.add_argument('--print_exc', help='Prints exceptions', action="store_true", default = False)
-    parser.add_argument('--buildlog', help='VectorCAST Build Log', default = "complete_build.log")
     parser.add_argument('--timing', help='Prints timing information for metrics generation', action="store_true", default = False)
     parser.add_argument('-v', '--verbose',   help='Enable verbose output', action="store_true", default = False)
     parser.add_argument('-l', '--level',   help='Environment Name if only doing single environment.  Should be in the form of level/env')
@@ -171,13 +153,14 @@ if __name__ == '__main__':
         print ("exiting...")
         sys.exit(-1)
 
-    glExec = AzureExecute(args.ManageProject, args.ci, args.incremental, args.level, args.environment, args.verbose, args.print_exc, args.timing, args.buildlog)
+    azExec = AzureExecute(args.ManageProject, args.ci, args.incremental, args.level, args.environment, args.verbose, args.print_exc, args.timing)
 
     if args.execute:
-        glExec.runExec()
+        azExec.runExec()
         
     if args.metrics:
-        glExec.runMetrics()
+        azExec.runMetrics()
 
     if args.reports:
-        glExec.runReports()
+        azExec.runReports()
+        

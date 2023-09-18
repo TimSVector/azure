@@ -36,7 +36,6 @@ import time
 import traceback
 
 from managewait import ManageWait
-from parse_console_for_cbt import ParseConsoleForCBT
 try:
     from vector.apps.ReportBuilder.custom_report import CustomReport
     try:
@@ -153,7 +152,7 @@ def delete_file(filename):
     if os.path.exists(filename):
         os.remove(filename)
         
-def genDataApiReports(FullManageProjectName, entry, cbtDict):
+def genDataApiReports(FullManageProjectName, entry):
     xml_file = ""
     
     try:
@@ -177,8 +176,7 @@ def genDataApiReports(FullManageProjectName, entry, cbtDict):
                                xmlUnitReportName,
                                jenkins_link,
                                jobNameDotted, 
-                               verbose, 
-                               cbtDict)
+                               verbose)
                                
         if xml_file.api != None:
             if verbose:
@@ -205,10 +203,11 @@ def generateCoverReport(path, env, level ):
 
     api=CoverApi(path)
 
-    report_name = "html_reports/" + level + "_" + env + ".html"
+    report_name = "html_reports/" + level + "_" + env + "_full_report.html"
 
     try:
         CustomReport.report_from_api(api, report_type="Demo", formats=["HTML"], output_file=report_name, sections=["CUSTOM_HEADER", "REPORT_TITLE", "TABLE_OF_CONTENTS", "CONFIG_DATA", "METRICS", "MCDC_TABLES",  "AGGREGATE_COVERAGE", "CUSTOM_FOOTER"])
+        print("Creating report in " + report_name)
 
     except Exception as e:
         print("   *Problem generating custom report for " + env + ": ")
@@ -222,10 +221,11 @@ def generateUTReport(path, env, level):
         return True
 
     api=UnitTestApi(path)
-    report_name = "html_reports/" + level + "_" + env + ".html"
+    report_name = "html_reports/" + level + "_" + env + "_full_report.html"
     try:
         api.commit = _dummy
         api.report(report_type="FULL_REPORT", formats=["HTML"], output_file=report_name)
+        print("Creating report in " + report_name)
     except Exception as e:
         print("   *Problem generating custom report for " + env + ".")
         if print_exc:
@@ -248,19 +248,19 @@ def generateIndividualReports(entry, envName):
         elif os.path.exists(unit_path):
             generateUTReport(unit_path , env, level)                
 
-def useNewAPI(FullManageProjectName, manageEnvs, level, envName, cbtDict):
+def useNewAPI(FullManageProjectName, manageEnvs, level, envName):
     failed_count = 0 
         
     for currentEnv in manageEnvs:
         if envName == None:
-            failed_count += genDataApiReports(FullManageProjectName, manageEnvs[currentEnv],  cbtDict)
+            failed_count += genDataApiReports(FullManageProjectName, manageEnvs[currentEnv])
             generateIndividualReports(manageEnvs[currentEnv], envName)
             
         elif manageEnvs[currentEnv]["env"].upper() == envName.upper(): 
             env_level = manageEnvs[currentEnv]["compiler"] + "/" + manageEnvs[currentEnv]["testsuite"]
             
             if env_level.upper() == level.upper():
-                failed_count += genDataApiReports(FullManageProjectName, manageEnvs[currentEnv], cbtDict)
+                failed_count += genDataApiReports(FullManageProjectName, manageEnvs[currentEnv])
                 generateIndividualReports(manageEnvs[currentEnv], envName)
     f = open("unit_test_fail_count.txt","w")
     f.write(str(failed_count))
@@ -270,7 +270,7 @@ def useNewAPI(FullManageProjectName, manageEnvs, level, envName, cbtDict):
 # build the Test Case Management Report for Manage Project
 # envName and level only supplied when doing reports for a sub-project
 # of a multi-job
-def buildReports(FullManageProjectName = None, level = None, envName = None, generate_individual_reports = True, timing = False, cbtDict = None):
+def buildReports(FullManageProjectName = None, level = None, envName = None, timing = False):
 
     if timing:
         print("Start: " + str(time.time()))
@@ -338,7 +338,7 @@ def buildReports(FullManageProjectName = None, level = None, envName = None, gen
         if timing:
             print("Using DataAPI for reporting")
             print("Get Info: " + str(time.time()))
-        useNewAPI(FullManageProjectName, manageEnvs, level, envName, cbtDict)
+        useNewAPI(FullManageProjectName, manageEnvs, level, envName)
         if timing:
             print("XML and Individual reports: " + str(time.time()))
 
@@ -361,7 +361,6 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose',   help='Enable verbose output', action="store_true")
     parser.add_argument('-l', '--level',   help='Environment Name if only doing single environment.  Should be in the form of level/env')
     parser.add_argument('-e', '--environment',   help='Environment Name if only doing single environment.  Should be in the form of level/env')
-    parser.add_argument('-g', '--dont-generate-individual-reports',   help='Don\'t Generated Individual Reports (below 2019 - this just controls execution report generate, 2019 and later - no individual reports will be generated',  action="store_true")
     parser.add_argument('--wait_time',   help='Time (in seconds) to wait between execution attempts', type=int, default=30)
     parser.add_argument('--wait_loops',   help='Number of times to retry execution', type=int, default=1)
     parser.add_argument('--timing',   help='Display timing information for report generation', action="store_true")
@@ -390,11 +389,6 @@ if __name__ == '__main__':
     wait_time = args.wait_time
     wait_loops = args.wait_loops
 
-    if args.dont_generate_individual_reports:
-        dont_generate_individual_reports = False
-    else:
-        dont_generate_individual_reports = True
-
     if args.timing:
         timing = True
     else:
@@ -406,21 +400,13 @@ if __name__ == '__main__':
         print ("Test results reporting has been migrated to JUnit.  If you are using older xUnit plugin with Single Jobs, please switch to using JUnit.  If you need assistance with that, contact support@us.vector.com")
         junit = True
         
-    if args.buildlog and os.path.exists(args.buildlog):
-        buildLogData = open(args.buildlog,"r").readlines()
-        cbt = ParseConsoleForCBT(verbose)
-        cbtDict = cbt.parse(buildLogData)
-        
-    else:
-        cbtDict = None
-
 
     # Used for pre VC19
     os.environ['VCAST_RPTS_PRETTY_PRINT_HTML'] = 'FALSE'
     # Used for VC19 SP2 onwards
     os.environ['VCAST_RPTS_SELF_CONTAINED'] = 'FALSE'
 
-    buildReports(args.ManageProject,args.level,args.environment,dont_generate_individual_reports, timing, cbtDict)
+    buildReports(args.ManageProject,args.level,args.environment, timing)
 
     if args.cobertura:
         for file in glob.glob("xml_data/coverage_results_*.*"):

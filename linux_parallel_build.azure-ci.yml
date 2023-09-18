@@ -6,7 +6,7 @@
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# to use, copy, modify, merge, publish, distribute, sublicense, and\or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
@@ -49,41 +49,34 @@ steps:
 
 - script: |
     $(VC_UseCILicense)
-    $VECTORCAST_DIR/vpython  ./vc_scripts/parallel_build.py --project "$(VC_Manage_Project)"  --jobs $(VC_jobCount)
-    $VECTORCAST_DIR/manage --project "$(VC_Manage_Project)" --execute 
-    $VECTORCAST_DIR/vpython ./vc_scripts/azure_exec.py "$(VC_Manage_Project)" $(VC_useCBT) --metrics --reports --buildlog complete_build.log
+    %VECTORCAST_DIR%\vpython  .\vc_scripts\parallel_build.py --project "$(VC_Manage_Project)"  --jobs $(VC_jobCount)
+    %VECTORCAST_DIR%\manage --project "$(VC_Manage_Project)" --execute 
+    %VECTORCAST_DIR%\vpython .\vc_scripts\azure_exec.py "$(VC_Manage_Project)" $(VC_useCBT) --metrics --reports --buildlog complete_build.log
   displayName: 'VectorCAST Parallel Build-Execute'
 
 - task: PublishTestResults@2
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: 'xml_data/test_results*.xml'
+    testResultsFiles: 'xml_data\test_results*.xml'
     searchFolder: '$(System.DefaultWorkingDirectory)'
     testRunTitle: 'VectorCAST Test Results'
 
 - task: PublishCodeCoverageResults@1
   inputs:
     codeCoverageTool: 'Cobertura'
-    summaryFileLocation: '$(System.DefaultWorkingDirectory)/xml_data/coverage_results*.xml'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)\xml_data\coverage_results*.xml'
     pathToSources: '$(System.DefaultWorkingDirectory)'
     reportDirectory: 'html_reports'
     failIfCoverageEmpty: false
 
 - task: PublishBuildArtifacts@1
   inputs:
-    PathtoPublish: '$(System.DefaultWorkingDirectory)/xml_data'
-    ArtifactName: 'coverage_results_fast_test.xml'
+    PathtoPublish: '$(System.DefaultWorkingDirectory)\xml_data'
+    ArtifactName: 'XML Metrics'
     publishLocation: 'Container'
 
 - task: PublishBuildArtifacts@1
   inputs:
-    PathtoPublish: '$(System.DefaultWorkingDirectory)/'
-    ArtifactName: 'complete_build.log'
+    PathtoPublish: '$(System.DefaultWorkingDirectory)\html_reports'
+    ArtifactName: 'HTML Reports'
     publishLocation: 'Container'
-
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(System.DefaultWorkingDirectory)/html_reports'
-    ArtifactName: 'VectorCAST_MinGW_C_TestSuite_MANAGER_C.html'
-    publishLocation: 'Container'
-

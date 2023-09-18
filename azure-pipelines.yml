@@ -1,25 +1,80 @@
-trigger: none
+#
+# The MIT License
+#
+# Copyright 2020 Vector Informatik, GmbH.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and\or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+
+trigger:
+- none
   
 variables:
   GIT_CLEAN_FLAGS: none
   
   # Relative path from checkout to the VectorCAST Project
-  VC_Manage_Project: "./vcast_tutorial_project.vcm"
+  VC_Manage_Project: "Project.vcm"
 
   # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
-  VC_UseCILicense: ""
+  VC_UseCILicense: "set VCAST_USE_CI_LICENSES=TRUE"
 
   # Using VecteorCAST Change Based Testing otherwise set to ""
   VC_useCBT: "--incremental"
 
-  sauce:  ""
+  # Set parallel build count (Will use VectorCAST licenses)
+  VC_jobCount: 4
+
 
 pool: TimS-VCAST
 
 name: vectorcast
 
 steps:
+
 - script: |
-    echo "##vso[task.setvariable variable=sauce;]crushed tomatoes"
-    %VECTORCAST_DIR%\vpython.exe .\azure\vc_scripts\generate_azure_yaml.py "$(VC_Manage_Project)"
-  displayName: 'VectorCAST Build-Execute'
+    $(VC_UseCILicense)
+    %VECTORCAST_DIR%\vpython .\vc_scripts\parallel_build_execute.py --project "$(VC_Manage_Project)"  $(VC_useCBT) --jobs $(VC_jobCount)
+    %VECTORCAST_DIR%\vpython .\vc_scripts\azure_exec.py "$(VC_Manage_Project)" --metrics --reports
+  displayName: 'VectorCAST Parallel Build-Execute'
+
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: 'xml_data\test_results*.xml'
+    searchFolder: '$(System.DefaultWorkingDirectory)'
+    testRunTitle: 'VectorCAST Test Results'
+
+- task: PublishCodeCoverageResults@1
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)\xml_data\coverage_results*.xml'
+    pathToSources: '$(System.DefaultWorkingDirectory)'
+    failIfCoverageEmpty: false
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(System.DefaultWorkingDirectory)\xml_data'
+    ArtifactName: 'XML Metrics'
+    publishLocation: 'Container'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(System.DefaultWorkingDirectory)\html_reports'
+    ArtifactName: 'HTML Reports'
+    publishLocation: 'Container'

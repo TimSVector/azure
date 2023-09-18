@@ -53,9 +53,8 @@ steps:
 
 - script: |
     "$VC_UseCILicense" 
-    %VECTORCAST_DIR%\vpython.exe .\vc_scripts\generate_azure_yaml.py "$VC_Manage_Project" $VC_useCBT
-    %VECTORCAST_DIR%\manage.exe --project "$VC_Manage_Project" --execute 
-    %VECTORCAST_DIR%\vpython.exe .\vc_scripts\azure_exec.py "$VC_Manage_Project"  --metrics --reports --buildlog complete_build.lo
+    %VECTORCAST_DIR%\vpython ./vc_scripts/parallel_build_execute.py "$VC_Manage_Project" $VC_useCBT $VC_jobCount
+    %VECTORCAST_DIR%\vpython ./vc_scripts/azure_exec.py "$VC_Manage_Project"  --metrics --reports 
   displayName: 'VectorCAST Parallel Build-Execute'
 
 

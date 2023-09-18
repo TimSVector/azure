@@ -52,7 +52,10 @@ def write_xml(x, name, verbose = False):
 
 def getFileXML(testXml, coverAPI, verbose = False):
 
-    prj_dir = os.environ['CI_PROJECT_DIR'].replace("\\","/") + "/"
+    try:
+        prj_dir = os.environ['CI_PROJECT_DIR'].replace("\\","/") + "/"
+    except:
+        prj_dir = os.getcwd().replace("\\","/") + "/"
     
     fname = coverAPI.display_name
     fpath = coverAPI.display_path.replace("\\","/")
@@ -174,9 +177,7 @@ def procesCoverage(coverXML, coverApi):
             covered = "true"
         else:
             covered = "false"
-            
-        print(statement.start_line, covered)
-            
+
         if statement.start_line == statement.end_line:
             if covEle.attrib['hits'] != "0" or covered == "true":
                 covEle.attrib['hits'] = "1"
@@ -233,7 +234,10 @@ def runCoverageResultsMP(packages, mpFile):
     package = None
     
     fileDict = {}
-    prj_dir = os.environ['CI_PROJECT_DIR'].replace("\\","/") + "/"
+    try:
+        prj_dir = os.environ['CI_PROJECT_DIR'].replace("\\","/") + "/"
+    except:
+        prj_dir = os.getcwd().replace("\\","/") + "/"
     
     # get a sorted listed of all the files with the proj directory stripped off
     for file in api.File.all():
@@ -252,7 +256,7 @@ def runCoverageResultsMP(packages, mpFile):
             # If we have data to save...
             if package != None:
         
-                print("saving data for package: " + path_name )
+                #print("saving data for package: " + path_name )
                 # calculate stats for package
                 branch_rate = 0.0
                 line_rate = 0.0
@@ -271,7 +275,7 @@ def runCoverageResultsMP(packages, mpFile):
             path_name = new_path
             
             # create a new package and zero out the stats
-            print("creating blank package for: " + path_name + "/")
+            #print("creating blank package for: " + path_name + "/")
 
             package  = etree.SubElement(packages, "package")
             classes  = etree.SubElement(package, "classes")
@@ -281,7 +285,7 @@ def runCoverageResultsMP(packages, mpFile):
             pkg_cov_st   = 0
             pkg_vg       = 0
             
-        print ("adding data for " + path)
+        #print ("adding data for " + path)
 
         total_br += file.metrics.branches
         total_st += file.metrics.statements
@@ -298,7 +302,7 @@ def runCoverageResultsMP(packages, mpFile):
         procesCoverage(classes, file)
         
     if package != None:
-        print("saving data for package: " + path_name )
+        # print("saving data for package: " + path_name )
         # calculate stats for package
         branch_rate = 0.0
         line_rate = 0.0

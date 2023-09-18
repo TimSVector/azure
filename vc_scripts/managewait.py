@@ -65,11 +65,11 @@ class ManageWait(object):
         self.io_t.daemon = True # thread dies with the program
         self.io_t.start()
 
-    def exec_manage_command(self, cmd_line):
+    def exec_manage_command(self, cmd_line, silent = False):
         self.command_line = "--project \"" + self.mpName + "\" " + self.useCI + " " + cmd_line
         if self.verbose:
             print (self.command_line)
-        return self.exec_manage()
+        return self.exec_manage(silent)
 
     def exec_manage(self, silent=False):
         with open("command.log", 'a') as logfile:
@@ -91,9 +91,6 @@ class ManageWait(object):
             
             self.startOutputThread(p.stdout, logfile)
             
-            if not self.silent:
-                print("Manage started")
-                
             license_outage = False
             edited_license_outage_msg = ""
             actual_license_outage_msg = ""
@@ -119,9 +116,6 @@ class ManageWait(object):
                 except Empty:
                     pass
 
-            if not self.silent:
-                print("Manage has finished")
-                
             # manage finished. Was there a license outage?
             if license_outage == True :
                 if loop_count < self.wait_loops:
