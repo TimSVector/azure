@@ -22,36 +22,73 @@
 # THE SOFTWARE.
 #
 
-vectorcast_execute:
-  stage: build
+
+trigger: none
   
-  variables:
-    GIT_CLEAN_FLAGS: none
-    
-    # Relative path from checkout to the VectorCAST Project
-    VC_Manage_Project: "Project.vcm"
+variables:
+  GIT_CLEAN_FLAGS: none
+  
+  # Relative path from checkout to the VectorCAST Project
+  VC_Manage_Project: "Project.vcm"
 
-    # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
-    VC_UseCILicense: "--ci"
+ # Environment Setup Script
+  VC_EnvSetup: "
+    VCAST_SRC_BASE=`pwd`
+    path=$path:/opt/tools/gnat/2017/bin
+    "
 
-    # Using VecteorCAST Change Based Testing otherwise set to ""
-    VC_useCBT: "--incremental"
+  # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
+  VC_UseCILicense: "VCAST_USE_CI_LICENSES=TRUE"
 
-  tags:
-    - vectorcast
+  # Using VecteorCAST Change Based Testing otherwise set to ""
+  VC_useCBT: "--incremental"
 
-  script:
-    - $VECTORCAST_DIR/vpython  vc_scripts/generate_azure_yaml.py $VC_Manage_Project $VC_UseCILicense $VC_useCBT
-
-  artifacts:
-    paths:
-      - vectorcast_execute.yml
+  # Set parallel build count (Will use VectorCAST licenses)
+  VC_jobCount: 4
 
 
-vectorcast_child:
-  stage: test
+pool: VCAST
 
-  trigger:
-    include:
-      - artifact: vectorcast_execute.yml
-        job: vectorcast_execute
+name: vectorcast
+
+steps:
+
+- script: |
+    $(VC_UseCILicense)
+    $(VC_EnvSetup)
+    $VECTORCAST_DIR/vpython ./vc_scripts/parallel_build_execute.py "$VC_Manage_Project" $(VC_useCBT) --jobs $(VC_jobCount)
+    $VECTORCAST_DIR/vpython ./vc_scripts/azure_exec.py "$VC_Manage_Project"  --metrics --reports 
+  displayName: 'VectorCAST Parallel Build-Execute'
+
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '$(System.DefaultWorkingDirectory)/xml_data/test_results*.xml'
+    searchFolder: '$(System.DefaultWorkingDirectory)'
+    testRunTitle: 'VectorCAST Test Results'
+
+- task: PublishCodeCoverageResults@1
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/xml_data/coverage_results*.xml'
+    pathToSources: '$(System.DefaultWorkingDirectory)'
+    reportDirectory: 'html_reports'
+    failIfCoverageEmpty: false
+
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(System.DefaultWorkingDirectory)/complete_build.log'
+    artifact: 'VectorCAST Complete Build Log'
+    publishLocation: 'pipeline'
+
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(System.DefaultWorkingDirectory)/html_reports'
+    artifactName: 'VectorCAST HTML Reports'
+    publishLocation: 'pipeline'
+
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(System.DefaultWorkingDirectory)/xml_data'
+    artifactName: 'Test and Code Coverage Results Files'
+    publishLocation: 'pipeline'

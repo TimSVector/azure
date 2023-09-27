@@ -31,6 +31,12 @@ variables:
   # Relative path from checkout to the VectorCAST Project
   VC_Manage_Project: "Project.vcm"
 
+  # Environment Setup Script
+  VC_EnvSetup: "
+    set VCAST_SRC_BASE=%CD%
+    set path=%path%;c:/tools/gnat/2017/bin
+    "
+
   # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
   VC_UseCILicense: "set VCAST_USE_CI_LICENSES=TRUE"
 
@@ -41,7 +47,7 @@ variables:
   VC_jobCount: 4
 
 
-pool: TimS-VCAST
+pool: VCAST
 
 name: vectorcast
 
@@ -49,6 +55,7 @@ steps:
 
 - script: |
     $(VC_UseCILicense)
+    $(VC_EnvSetup)
     %VECTORCAST_DIR%\vpython .\vc_scripts\parallel_build_execute.py --project "$(VC_Manage_Project)"  $(VC_useCBT) --jobs $(VC_jobCount)
     %VECTORCAST_DIR%\vpython .\vc_scripts\azure_exec.py "$(VC_Manage_Project)" --metrics --reports
   displayName: 'VectorCAST Parallel Build-Execute'

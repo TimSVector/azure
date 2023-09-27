@@ -1,12 +1,12 @@
 #
 # The MIT License
 #
-# Copyright 2016 Vector Software, East Greenwich, Rhode Island USA
+# Copyright 2020 Vector Informatik, GmbH.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# to use, copy, modify, merge, publish, distribute, sublicense, and\or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
@@ -29,12 +29,12 @@ variables:
   GIT_CLEAN_FLAGS: none
   
   # Relative path from checkout to the VectorCAST Project
-  VC_Manage_Project: "./CurrentRelease/vcast-workarea/vc_manage/PointOfSales_Manage.vcm"
+  VC_Manage_Project: "Project.vcm"
 
   # Environment Setup Script
   VC_EnvSetup: "
-    set VCAST_DEMO_SRC_BASE=%CD%/CurrentRelease
-    set path=%path%;c:/vector/tools/gnat/2017/bin
+    set VCAST_SRC_BASE=%CD%
+    set path=%path%;c:/tools/gnat/2017/bin
     "
 
   # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
@@ -47,7 +47,7 @@ variables:
   VC_jobCount: 4
 
 
-pool: TimS-VCAST
+pool: VCAST
 
 name: vectorcast
 
@@ -57,14 +57,15 @@ steps:
     $(VC_UseCILicense)
     $(VC_EnvSetup)
     %VECTORCAST_DIR%/vpython.exe  ./azure/vc_scripts/parallel_build.py --project "$(VC_Manage_Project)"  --jobs $(VC_jobCount)
-    %VECTORCAST_DIR%/manage.exe --project "$(VC_Manage_Project)" --execute 
-    %VECTORCAST_DIR%/vpython.exe ./azure/vc_scripts/azure_exec.py "$(VC_Manage_Project)" $(VC_useCBT) --metrics --reports --buildlog complete_build.log
+    %VECTORCAST_DIR%/manage.exe --project "$(VC_Manage_Project)" --execute $(VC_useCBT)
+    %VECTORCAST_DIR%/vpython.exe ./azure/vc_scripts/azure_exec.py "$(VC_Manage_Project)"  --metrics --reports
   displayName: 'VectorCAST Parallel Build-Execute'
+
 
 - task: PublishTestResults@2
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: 'xml_data/test_results*.xml'
+    testResultsFiles: '$(System.DefaultWorkingDirectory)/xml_data/test_results*.xml'
     searchFolder: '$(System.DefaultWorkingDirectory)'
     testRunTitle: 'VectorCAST Test Results'
 
@@ -75,19 +76,22 @@ steps:
     pathToSources: '$(System.DefaultWorkingDirectory)'
     reportDirectory: 'html_reports'
     failIfCoverageEmpty: false
+
 - task: PublishPipelineArtifact@1
   inputs:
-    targetPath: 'complete_build.log'
+    targetPath: '$(System.DefaultWorkingDirectory)/complete_build.log'
     artifact: 'VectorCAST Complete Build Log'
     publishLocation: 'pipeline'
+
 - task: PublishPipelineArtifact@1
   inputs:
-    targetPath: 'html_reports'
+    targetPath: '$(System.DefaultWorkingDirectory)/html_reports'
     artifactName: 'VectorCAST HTML Reports'
     publishLocation: 'pipeline'
+
 - task: PublishPipelineArtifact@1
   inputs:
-    targetPath: 'xml_data'
+    targetPath: '$(System.DefaultWorkingDirectory)/xml_data'
     artifactName: 'Test and Code Coverage Results Files'
     publishLocation: 'pipeline'
 

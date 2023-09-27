@@ -29,6 +29,12 @@ variables:
   
   # Relative path from checkout to the VectorCAST Project
   VC_Manage_Project: "Project.vcm"
+  
+ # Environment Setup Script
+  VC_EnvSetup: "
+    VCAST_SRC_BASE=`pwd`
+    path=$path:/opt/tools/gnat/2017/bin
+    "
 
   # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
   VC_UseCILicense: "export VCAST_USE_CI_LICENSES=TRUE"
@@ -44,13 +50,14 @@ steps:
 
 - script: |
     $(VC_UseCILicense) 
-    $VECTORCAST_DIR/vpython ./vc_scripts/azure_exec.py "$(VC_Manage_Project)" $(VC_useCBT) --execute --metrics --reports --buildlog complete_build.log
+    $(VC_EnvSetup) 
+    $VECTORCAST_DIR/vpython ./vc_scripts/azure_exec.py "$(VC_Manage_Project)" $(VC_useCBT) --execute --metrics --reports
   displayName: 'VectorCAST Build-Execute'
 
 - task: PublishTestResults@2
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: 'xml_data/test_results*.xml'
+    testResultsFiles: '$(System.DefaultWorkingDirectory)/xml_data/test_results*.xml'
     searchFolder: '$(System.DefaultWorkingDirectory)'
     testRunTitle: 'VectorCAST Test Results'
 
@@ -64,19 +71,19 @@ steps:
 
 - task: PublishPipelineArtifact@1
   inputs:
-    targetPath: 'complete_build.log'
+    targetPath: '$(System.DefaultWorkingDirectory)/complete_build.log'
     artifact: 'VectorCAST Complete Build Log'
     publishLocation: 'pipeline'
 
 - task: PublishPipelineArtifact@1
   inputs:
-    targetPath: 'html_reports'
+    targetPath: '$(System.DefaultWorkingDirectory)/html_reports'
     artifactName: 'VectorCAST HTML Reports'
     publishLocation: 'pipeline'
 
 - task: PublishPipelineArtifact@1
   inputs:
-    targetPath: 'xml_data'
+    targetPath: '$(System.DefaultWorkingDirectory)/xml_data'
     artifactName: 'Test and Code Coverage Results Files'
     publishLocation: 'pipeline'
 
