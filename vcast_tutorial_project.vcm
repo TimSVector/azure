@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project version="29">
+<project version="34">
   <config>
+    <config>
+      <key>COVERAGE_TYPE</key>
+      <value>Statement+Branch</value>
+    </config>
     <saved-logs>5</saved-logs>
     <build-directory-naming-strategy>COMPRESSED</build-directory-naming-strategy>
   </config>
