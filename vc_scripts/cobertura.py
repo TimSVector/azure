@@ -84,6 +84,8 @@ def getFileXML(testXml, coverAPI, verbose = False):
         file.attrib['line-rate'] = str(st_br_pct)
         file.attrib['branch-rate'] = str(cov_br_pct)
         file.attrib['complexity'] = str(coverAPI.metrics.complexity)
+        # methods not used
+        methods = etree.SubElement(file, "methods")
         lines = etree.SubElement(file, "lines")
         path = os.path.dirname(fname)
         if path not in fileList:
@@ -177,7 +179,7 @@ def procesCoverage(coverXML, coverApi):
             covered = "true"
         else:
             covered = "false"
-
+            
         if statement.start_line == statement.end_line:
             if covEle.attrib['hits'] != "0" or covered == "true":
                 covEle.attrib['hits'] = "1"
@@ -212,15 +214,23 @@ def procesCoverage(coverXML, coverApi):
         if hitFalse or hitTrue:
             covEle.attrib['hits'] = "1"
                                  
-def runCoverageResultsMP(packages, mpFile):
+def runCoverageResultsMP(packages, mpFile, verbose = False):
 
     vcproj = VCProjectApi(mpFile)
     api = vcproj.project.cover_api
         
     total_br = 0
     total_st = 0
+    total_func = 0 
+    total_fc   = 0 
+    total_mcdc = 0
+    
     cov_br   = 0 
     cov_st   = 0
+    cov_func   = 0
+    cov_fc   = 0 
+    cov_mcdc = 0
+    
     vg       = 0
 
     pkg_total_br = 0
@@ -239,24 +249,28 @@ def runCoverageResultsMP(packages, mpFile):
     except:
         prj_dir = os.getcwd().replace("\\","/") + "/"
     
+    
     # get a sorted listed of all the files with the proj directory stripped off
     for file in api.File.all():
         fname = file.display_name
-        fpath = file.display_path.replace("\\","/").replace(prj_dir,"").replace(fname,"")[:-1]
+        #fpath = file.display_path.replace("\\","/").replace(prj_dir,"").replace(fname,"")[:-1]
+        # modify to parse the cpp extension
+        fpath = file.display_path.rsplit('.',1)[0].replace("\\","/").replace(prj_dir,"")
         fileDict[fpath] = file
         
-           
     for path in sorted(fileDict.keys()):
         file = fileDict[path]        
-        new_path = path
-        
+        new_path = path.rsplit('/',1)[0]
+                
         # when we switch paths
         if new_path != path_name:
         
             # If we have data to save...
             if package != None:
         
-                #print("saving data for package: " + path_name )
+                if verbose:
+                    print("saving data for package: " + path_name )
+                    
                 # calculate stats for package
                 branch_rate = 0.0
                 line_rate = 0.0
@@ -267,15 +281,21 @@ def runCoverageResultsMP(packages, mpFile):
                     line_rate = float(pkg_cov_st) / float(pkg_total_st)
                 
                 # store the stats 
-                package.attrib['name'] = path_name
+                # remove trailing . if present
+                package_name = path_name.replace("/",".")
+                if package_name.endswith("."):
+                    package_name = package_name[:-1]
+
+                package.attrib['name'] = package_name
                 package.attrib['line-rate'] = str(line_rate)    
                 package.attrib['branch-rate'] = str(branch_rate)
                 package.attrib['complexity'] = str(pkg_vg)
                 
             path_name = new_path
             
-            # create a new package and zero out the stats
-            #print("creating blank package for: " + path_name + "/")
+            if verbose:
+                # create a new package and zero out the stats
+                print("creating blank package for: " + path_name + "/")
 
             package  = etree.SubElement(packages, "package")
             classes  = etree.SubElement(package, "classes")
@@ -285,15 +305,24 @@ def runCoverageResultsMP(packages, mpFile):
             pkg_cov_st   = 0
             pkg_vg       = 0
             
-        #print ("adding data for " + path)
+        if verbose:
+            print ("adding data for " + path)
 
         total_br += file.metrics.branches
         total_st += file.metrics.statements
+        total_func += file.metrics.covered_functions
+        total_fc += file.metrics.function_calls
+        total_mcdc += file.metrics.mcdc_pairs
+
         cov_br   += file.metrics.covered_branches
         cov_st   += file.metrics.covered_statements
+        cov_func   += file.metrics.covered_functions
+        cov_fc   += file.metrics.covered_function_calls
+        cov_mcdc   += file.metrics.covered_mcdc_pairs
+        
         vg       += file.metrics.complexity
         
-        pkg_total_st += file.metrics.branches
+        pkg_total_br += file.metrics.branches
         pkg_total_st += file.metrics.statements
         pkg_cov_br   += file.metrics.covered_branches
         pkg_cov_st   += file.metrics.covered_statements
@@ -302,7 +331,9 @@ def runCoverageResultsMP(packages, mpFile):
         procesCoverage(classes, file)
         
     if package != None:
-        # print("saving data for package: " + path_name )
+        if verbose:
+            print("saving data for package: " + path_name )
+            
         # calculate stats for package
         branch_rate = 0.0
         line_rate = 0.0
@@ -313,7 +344,11 @@ def runCoverageResultsMP(packages, mpFile):
             line_rate = float(pkg_cov_st) / float(pkg_total_st)
         
         # store the stats 
-        package.attrib['name'] = path_name[:-1].replace("/",".")
+        package_name = path_name.replace("/",".")
+        if package_name.endswith("."):
+            package_name = package_name[:-1]
+        
+        package.attrib['name'] = package_name
         package.attrib['line-rate'] = str(line_rate)    
         package.attrib['branch-rate'] = str(branch_rate)
         package.attrib['complexity'] = str(pkg_vg)
@@ -321,13 +356,26 @@ def runCoverageResultsMP(packages, mpFile):
     branch_rate = 0.0
     line_rate = 0.0
     
+    func_rate = 0.0
+    FC_rate = 0.0
+    MCDC_rate = 0.0
+    
     if total_br > 0:
         branch_rate = float(cov_br) / float(total_br)
         
     if total_st > 0:
         line_rate = float(cov_st) / float(total_st)
         
-    return total_st, cov_st, total_br, cov_br, branch_rate, line_rate, vg
+    if total_func > 0:
+        func_rate = float(cov_func) / float(total_func)
+        
+    if total_fc > 0:
+        FC_rate = float(cov_fc) / float(total_fc)
+        
+    if total_mcdc > 0:
+        MCDC_rate = float(cov_mcdc) / float(total_mcdc)
+        
+    return total_st, cov_st, total_br, cov_br, total_func, cov_func, total_fc, cov_fc, total_mcdc, cov_mcdc, branch_rate, line_rate, func_rate, FC_rate, MCDC_rate, vg
             
 
 def generateCoverageResults(inFile):
@@ -348,7 +396,9 @@ def generateCoverageResults(inFile):
     # package.attrib['complexity'] = str(complexity)
     # classes  = etree.SubElement(package, "classes")
     
-    branch_rate, line_rate, complexity  = 0.0, 0.0, 0.0
+    complexity = 0
+    branch_rate, line_rate, func_rate,  FC_rate,  MCDC_rate  = 0.0, 0.0, 0.0,  0.0, 0.0
+    total_br,    total_st,  total_func, total_fc, total_mcdc =   0,   0,   0,    0,   0
     
     if inFile.endswith(".vce"):
         api=UnitTestApi(inFile)
@@ -357,8 +407,8 @@ def generateCoverageResults(inFile):
         api=CoverAPI(inFile)
         #runCoverageCover(classes, api)
     else:        
-        total_st, cov_st, total_br, cov_br, branch_rate, line_rate, complexity  = runCoverageResultsMP(packages, inFile)
-        
+        total_st, cov_st, total_br, cov_br, total_func, cov_func, total_fc, cov_fc, total_mcdc, cov_mcdc, branch_rate, line_rate, func_rate, FC_rate, MCDC_rate, complexity  = runCoverageResultsMP(packages, inFile)
+
     coverages.attrib['branch-rate'] = str(branch_rate)
     coverages.attrib['line-rate'] = str(line_rate)    
     coverages.attrib['timestamp'] = "0"
@@ -374,17 +424,21 @@ def generateCoverageResults(inFile):
         coverages.attrib['branches-covered'] = str(cov_br)
         coverages.attrib['branches-valid'] = str(total_br)
         
+    if total_st > 0:   print ("statements: {:.2f}% ({:d} out of {:d})".format(line_rate*100.0, cov_st, total_st))
+    if total_br > 0:   print ("branches: {:.2f}% ({:d} out of {:d})".format(branch_rate*100.0, cov_br, total_br))
+    if total_func > 0: print ("functions: {:.2f}% ({:d} out of {:d})".format(func_rate*100.0, cov_func, total_func))
+    if total_fc > 0:   print ("function calls: {:.2f}% ({:d} out of {:d})".format(FC_rate*100.0, cov_fc, total_fc))
+    if total_mcdc > 0: print ("mcdc pairs: {:.2f}% ({:d} out of {:d})".format(MCDC_rate*100.0, cov_mcdc, total_mcdc))
     
-    print ("lines: {:.2f}% ({:d} out of {:d})".format(line_rate*100.0, cov_st, total_st))
-    print ("branches: {:.2f}% ({:d} out of {:d})".format(branch_rate*100.0, cov_br, total_br))
-    print ("coverage: {:.2f}% of statements" .format(line_rate*100.0))
+    print ("coverage: {:.2f}% of statements".format(line_rate*100.0))
+    print ("complexity: {:d}".format(complexity))
     source = etree.SubElement(sources, "source")
     source.text = "./"
 
-    if not os.path.exists("xml_data"):
-        os.makedirs("xml_data")
+    if not os.path.exists("xml_data/cobertura"):
+        os.makedirs("xml_data/cobertura")
         
-    write_xml(coverages, "xml_data/coverage_results_" + name)
+    write_xml(coverages, "xml_data/cobertura/coverage_results_" + name)
              
 if __name__ == '__main__':
     

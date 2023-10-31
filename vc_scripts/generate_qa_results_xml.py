@@ -36,7 +36,7 @@ def writeJunitFooter(junitfile):
 
 def write_tc_data(currentEnv, unit_report_name, jobNameDotted, passed, failed, error, testcase_data):
 
-    fh = open("xml_data/" + unit_report_name, "w")
+    fh = open("xml_data/junit/" + unit_report_name, "w")
 
     writeJunitHeader(currentEnv, fh, failed, failed+passed, unit_report_name)
     writeJunitData(fh, testcase_data)
@@ -182,12 +182,12 @@ def processSystemTestResultsData(lines):
         
     return failed
         
-def saveQATestStatus(mp):
-    callStr = os.environ.get('VECTORCAST_DIR') + os.sep + "manage -p " + mp + " --system-tests-status=" + os.path.basename(mp)[:-4] + "_system_tests_status.html"
+def saveQATestStatus(mp, use_ci = ""):
+    callStr = os.environ.get('VECTORCAST_DIR') + os.sep + "manage -p " + mp + use_ci + " --system-tests-status=" + os.path.basename(mp)[:-4] + "_system_tests_status.html"
     p = subprocess.Popen(callStr, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     out, err = p.communicate()
 
-def genQATestResults(mp, level = None, envName = None, verbose = False):
+def genQATestResults(mp, level = None, envName = None, verbose = False, use_ci = ""):
     try:
         from vector.apps.DataAPI.manage_models import SystemTest
         if verbose:
@@ -197,7 +197,7 @@ def genQATestResults(mp, level = None, envName = None, verbose = False):
         pass
 
     print("   Processing QA test results for " + mp)
-    callStr = os.environ.get('VECTORCAST_DIR') + os.sep + "manage -p " + mp + " --system-tests-status"
+    callStr = os.environ.get('VECTORCAST_DIR') + os.sep + "manage -p " + mp + use_ci + " --system-tests-status"
     if level:
         callStr += " --level " + level
         if envName:
@@ -210,7 +210,7 @@ def genQATestResults(mp, level = None, envName = None, verbose = False):
         print(out, err)
     failed_count = processSystemTestResultsData(out.splitlines())
     
-    saveQATestStatus(mp)
+    saveQATestStatus(mp, use_ci)
     
     return failed_count
         

@@ -46,6 +46,8 @@ from vector.apps.DataAPI.cover_api import CoverApi
 from vector.apps.ReportBuilder.custom_report import fmt_percent
 from operator import attrgetter
 from vector.enums import COVERAGE_TYPE_TYPE_T
+from vector.enums import ENVIRONMENT_STATUS_TYPE_T
+
 import hashlib 
 
 def dummy(*args, **kwargs):
@@ -56,11 +58,15 @@ def dummy(*args, **kwargs):
 # (Emma based) report for Coverage
 #
 class BaseGenerateXml(object):
-    def __init__(self, cover_report_name, verbose):
+    def __init__(self, cover_report_name, verbose, use_ci):
         self.cover_report_name = cover_report_name
         self.verbose = verbose
         self.using_cover = False
-
+        if use_ci:
+            self.use_ci = " --ci "
+        else:
+            self.use_ci = ""
+            
 #
 # Internal - calculate coverage value
 #
@@ -292,12 +298,12 @@ class BaseGenerateXml(object):
 # (Emma based) report for Coverage
 #
 class GenerateManageXml(BaseGenerateXml):
-    def __init__(self, cover_report_name, verbose, manage_path):
-        super(GenerateManageXml, self).__init__(cover_report_name, verbose)
+    def __init__(self, cover_report_name, verbose, manage_path, use_ci):
+        super(GenerateManageXml, self).__init__(cover_report_name, verbose, use_ci)
         self.using_cover = True
-        from vector.apps.DataAPI.manage_api import ManageApi
+        from vector.apps.DataAPI.manage_api import VCProjectApi
 
-        self.api = ManageApi(manage_path)
+        self.api = VCProjectApi(manage_path)
 
     def write_coverage_data(self):
         self.fh.write('  <combined-coverage type="complexity, %%" value="0%% (%s / 0)"/>\n' % self.grand_total_complexity)
@@ -321,7 +327,7 @@ class GenerateManageXml(BaseGenerateXml):
         self.write_coverage_data()
         self.end_cov_file()
         self.api.close()
-
+        
 ##########################################################################
 # This class generates the XML (Junit based) report for dynamic tests and
 # the XML (Emma based) report for Coverage results
@@ -330,8 +336,8 @@ class GenerateManageXml(BaseGenerateXml):
 #
 class GenerateXml(BaseGenerateXml):
 
-    def __init__(self, FullManageProjectName, build_dir, env, compiler, testsuite, cover_report_name, jenkins_name, unit_report_name, jenkins_link, jobNameDotted, verbose = False):
-        super(GenerateXml, self).__init__(cover_report_name, verbose)
+    def __init__(self, FullManageProjectName, build_dir, env, compiler, testsuite, cover_report_name, jenkins_name, unit_report_name, jenkins_link, jobNameDotted, verbose = False, cbtDict= None, use_ci = False):
+        super(GenerateXml, self).__init__(cover_report_name, verbose, use_ci)
 
         self.FullManageProjectName = FullManageProjectName
         
@@ -361,12 +367,30 @@ class GenerateXml(BaseGenerateXml):
         self.using_cover = False
         cov_path = os.path.join(build_dir,env + '.vcp')
         unit_path = os.path.join(build_dir,env + '.vce')
-        if os.path.exists(cov_path):
+        self.failed_count = 0
+        
+        if os.path.exists(cov_path) and os.path.exists(cov_path[:-4]):
             self.using_cover = True
-            self.api = CoverApi(cov_path)
-        elif os.path.exists(unit_path):
+            try:
+                self.api = CoverApi(cov_path)
+            except:
+                self.api = None
+                return
+            
+        elif os.path.exists(unit_path) and os.path.exists(unit_path[:-4]):
             self.using_cover = False
-            self.api = UnitTestApi(unit_path)
+            try:
+                self.api = UnitTestApi(unit_path)
+            except:
+                self.api = None
+
+                return
+                
+            if self.api.environment.status != ENVIRONMENT_STATUS_TYPE_T.NORMAL:
+                self.api.close()
+                self.api = None
+                return
+            
         else:
             self.api = None
             if verbose:
@@ -374,8 +398,11 @@ class GenerateXml(BaseGenerateXml):
             return
 
         self.api.commit = dummy
-        self.failed_count = 0
 
+        
+    def __del__(self):
+        if self.api:
+            self.api.close()
 #
 # Internal - add any compound tests to the unit report
 #
@@ -398,8 +425,9 @@ class GenerateXml(BaseGenerateXml):
 # Find the test case file
 #
     def generate_unit(self):
-        
+         
         if isinstance(self.api, CoverApi):
+
             try:
                 from vector.apps.DataAPI.vcproject_api import VCProjectApi
                 self.start_system_test_file()
@@ -424,13 +452,13 @@ class GenerateXml(BaseGenerateXml):
                                 print (level, st.name, pass_fail_rerun)
                             self.write_testcase(st, level, st.name)
                 from generate_qa_results_xml import saveQATestStatus
-                saveQATestStatus(self.FullManageProjectName)
+                saveQATestStatus(self.FullManageProjectName, self.use_ci)
 
                 api.close()
 
             except ImportError as e:
                 from generate_qa_results_xml import genQATestResults
-                self.failed_count += genQATestResults(self.FullManageProjectName, self.compiler+ "/" + self.testsuite, self.env, True)
+                self.failed_count += genQATestResults(self.FullManageProjectName, self.compiler+ "/" + self.testsuite, self.env, True, self.use_ci)
                 return
 
         else:
@@ -438,6 +466,8 @@ class GenerateXml(BaseGenerateXml):
                 self.start_unit_test_file()
                 self.add_compound_tests()
                 self.add_init_tests()
+
+
                 for unit in self.api.Unit.all():
                     if unit.is_uut:
                         for func in unit.functions:
@@ -453,8 +483,10 @@ class GenerateXml(BaseGenerateXml):
 
             except AttributeError as e:
                 parse_traceback.parse(traceback.format_exc(), self.print_exc, self.compiler,  self.testsuite,  self.env,  self.build_dir)
-                
+
         self.end_test_results_file()
+                
+
 #
 # Internal - start the JUnit XML file
 #
@@ -480,7 +512,7 @@ class GenerateXml(BaseGenerateXml):
                         errors += 1  
                         self.failed_count += 1
         api.close()            
-        
+		
         self.fh.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
         self.fh.write("<testsuites>\n")
         self.fh.write("    <testsuite errors=\"%d\" tests=\"%d\" failures=\"%d\" name=\"%s\" id=\"1\">\n" %
@@ -538,6 +570,13 @@ class GenerateXml(BaseGenerateXml):
         else:
             deltaTimeStr = "0.0"
 
+        testcaseString ="""
+        <testcase name="%s" classname="%s" time="%s">%s
+            <system-out>
+%s                     
+            </system-out>
+        </testcase>
+"""
         unit_name = escape(unit_name, quote=False)
         func_name = escape(func_name, quote=True)
         tc_name = escape(tc.name, quote=False)
@@ -549,6 +588,8 @@ class GenerateXml(BaseGenerateXml):
 
         classname = compiler + "." + testsuite + "." + envName
 
+        result = ""
+        
         if isSystemTest:        
             exp_total = tc.total
             exp_pass = tc.passed
@@ -580,26 +621,19 @@ class GenerateXml(BaseGenerateXml):
     
         # Failure takes priority  
         if not tc.passed:
-            if tcSkipped: 
-                status = "Testcase may have been skipped by VectorCAST Change Based Testing.  Last execution data shown.\n\nFAIL"
-            else:
-                status = "FAIL"
+            status = "FAIL"
             extraStatus = "\n            <failure type=\"failure\"/>\n"
-        elif tcSkipped:
-            status = "Skipped by VectorCAST Change Based Testing.  Last execution data shown.\n\nPASS"
-            extraStatus = "\n            <skipped/>\n"
         else:
             status = "PASS"
             extraStatus = ""
 
-        testcaseString ="""
-        <testcase name="%s" classname="%s" time="%s">
-            %s
-        </testcase>
-"""
+        msg = "{} {} / {} {}".format(status, exp_pass, exp_total, result)
 
+        msg = escape(msg, quote=False)
+        msg = msg.replace("\"","")
+        msg = msg.replace("\n","&#xA;")
         
-        self.fh.write(testcaseString % (tc_name_full, classname, deltaTimeStr, extraStatus))
+        self.fh.write(testcaseString % (tc_name_full, classname, deltaTimeStr, extraStatus, msg))
 
 #
 # Internal - write the end of the jUnit XML file and close it
@@ -751,6 +785,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('environment', help='VectorCAST environment name')
     parser.add_argument('-v', '--verbose', default=False, help='Enable verbose output', action="store_true")
+    parser.add_argument('--ci', help='Use continuous integration licenses', action="store_true", default=False)
+    
     args = parser.parse_args()
     
     envPath = os.path.dirname(os.path.abspath(args.environment))
@@ -777,7 +813,8 @@ if __name__ == '__main__':
                            jenkins_link,
                            jobNameDotted, 
                            args.verbose, 
-                           None)
+                           None,
+                           args.ci)
 
     if xml_file.api == None:
         print ("\nCannot find project file (.vcp or .vce): " + envPath + os.sep + env)
