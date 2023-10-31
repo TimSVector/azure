@@ -29,7 +29,7 @@ import generate_results
 import cobertura
 
 try:
-    import vector.apps.ParallelBuildExecute.parallel_build_execute as parallel_build_execute
+    import vector.apps.parallel.parallel_build_execute as parallel_build_execute
 except:
     import prevcast_parallel_build_execute as parallel_build_execute
 
@@ -120,16 +120,15 @@ class AzureExecute(object):
         cobertura.gitlab = False
         cobertura.generateCoverageResults(self.FullMP)
 
-        if self.sonarqube:
-            self.cleanup("sonarqube", "test_results_")
-            import generate_sonarqube_testresults 
-
-            generate_sonarqube_testresults.run(self.FullMP)
+    def runSonarQubeMetrics(self):
+        self.cleanup("sonarqube", "test_results_")
+        import generate_sonarqube_testresults 
+        generate_sonarqube_testresults.run(self.FullMP)
 
     def runReports(self):
         self.manageWait.exec_manage_command ("--create-report=aggregate     --output=" + self.mpName + "_aggregate_report.html")
         self.manageWait.exec_manage_command ("--create-report=metrics       --output=" + self.mpName + "_metrics_report.html")
-        self.manageWait.exec_manage_command ("--create-report=environment   --output=" + self.mpName + "_environment_report.html")
+        # self.manageWait.exec_manage_command ("--create-report=environment   --output=" + self.mpName + "_environment_report.html")
 
     def runExec(self):
 
@@ -197,7 +196,7 @@ if __name__ == '__main__':
         print ("exiting...")
         sys.exit(-1)
 
-    azExec = AzureExecute(args.ManageProject, args.ci, args.incremental, args.level, args.environment, args.verbose, args.print_exc, args.timing,  args.sonarqube, args.jobs, args.build)
+    azExec = AzureExecute (args.ManageProject, args.ci, args.incremental, args.level, args.environment, args.verbose, args.print_exc, args.timing, args.sonarqube, args.jobs, args.build)
 
     if args.execute:
         azExec.runExec()
@@ -208,3 +207,5 @@ if __name__ == '__main__':
     if args.reports:
         azExec.runReports()
         
+    if args.sonarqube:
+        azExec.runSonarQubeMetrics()

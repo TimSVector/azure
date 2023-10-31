@@ -4,6 +4,8 @@
     <config>
       <key>COVERAGE_TYPE</key>
       <value>Statement+Branch</value>
+      <key>VCAST_CUSTOM_REPORT_FORMAT</key>
+      <value>HTML</value>
     </config>
     <saved-logs>5</saved-logs>
     <build-directory-naming-strategy>COMPRESSED</build-directory-naming-strategy>
