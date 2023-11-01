@@ -48,7 +48,7 @@ class ParallelExecute(object):
         parser.add_argument('--jobs', '-j',     help='Number of concurrent jobs (default = 1)', default="1")
         parser.add_argument('--prioritize', '-pr', help='Comma separated list of environments to add to front of the que', default=None)
         parser.add_argument('--tc_order', '-tc', help='Add environments to que based on # of testcases', action="store_true", default=False)
-        parser.add_argument('--ci', help='Use continuous integration licenses', action="store_true", default=False)
+        parser.add_argument('--use_ci', help='Use continuous integration licenses', action="store_true", default=False)
         parser.add_argument('--vcast_action', help = 'Choose the VectorCAST Action (default = build-execute)', choices = ['build', 'execute', 'build-execute'], default = 'build-execute')
         args = parser.parse_args()
         
@@ -88,7 +88,7 @@ class ParallelExecute(object):
         else:
             self.incremental = ""
             
-        if args.ci:
+        if args.use_ci:
             self.use_ci = " --ci "
         else:
             self.use_ci = ""

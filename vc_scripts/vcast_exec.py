@@ -65,10 +65,12 @@ class VectorCASTExecute(object):
         self.mpName = os.path.basename(args.ManageProject)[:-4]
 
         if args.ci:
-            self.useCI = " --ci "
+            self.useCI = " --use_ci "
+            self.ci = " --ci "
         else:
             self.useCI = ""
-
+            self.ci = ""
+            
         if args.incremental:
             self.useCBT = " --incremental "
         else:
@@ -112,7 +114,7 @@ class VectorCASTExecute(object):
         else:
             self.build_log_name = "build" + self.mpName + ".log"    
 
-        self.manageWait = ManageWait(self.verbose, "", 30, 1, self.FullMP, self.useCI)
+        self.manageWait = ManageWait(self.verbose, "", 30, 1, self.FullMP, self.ci)
 
     def cleanup(self, dirName, fname):
         for file in glob.glob("xml_data/" + dirName+ "/" + fname + "*.*"):
@@ -122,6 +124,7 @@ class VectorCASTExecute(object):
                 print("Error removing file after failed to remove directory: " +  file)
     
     def runJunitMetrics(self):
+        print("Creating JUnit Metrics")
             
         self.cleanup("junit", "test_results_")
 
@@ -132,11 +135,13 @@ class VectorCASTExecute(object):
             
 
     def runCoberturaMetrics(self):
+        print("Creating Cobertura Metrics")
         self.cleanup("cobertura", "coverage_results_")
         cobertura.verbose = self.verbose
         cobertura.generateCoverageResults(self.FullMP, self.azure)
 
     def runSonarQubeMetrics(self):
+        print("Creating SonarQube Metrics")
         self.cleanup("sonarqube", "test_results_")
         import generate_sonarqube_testresults 
         generate_sonarqube_testresults.run(self.FullMP)
