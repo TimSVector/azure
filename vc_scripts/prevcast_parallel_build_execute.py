@@ -65,8 +65,6 @@ class ParallelExecute(object):
         self.tc_order = args.tc_order
         
         self.vcast_action = args.vcast_action
-        
-        print("**** vcast_action", self.vcast_action)
 
         if args.prioritize == None:
             self.priority_list = []
@@ -462,8 +460,6 @@ class ParallelExecute(object):
 
 # API for importing the module into another script
 def parallel_build_execute(in_args):
-
-    print (in_args)
     prev_argv = sys.argv
     try:
         sys.argv =  ["prevcast_parallel_build_execute.py"] + in_args.split(' ')

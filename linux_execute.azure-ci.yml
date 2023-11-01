@@ -37,13 +37,13 @@ variables:
     path=$path:/opt/tools/gnat/2017/bin
     "
 
-  # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
+    # Use --ci for VectorCAST Continuous Integration (headless) licenses; otherwise, set to ""
   VC_UseCILicense: "--ci"
 
-  # Using VecteorCAST Change Based Testing otherwise set to ""
+    # Use "--incremental" to use VecteorCAST Change Based Testing; otherwise, set to ""
   VC_useCBT: "--incremental"
 
-  # Set VC_jobs build count (Will use VectorCAST licenses)
+    # Use "--jobs=##" to use parallel number of jobs per compiler node; otherwise, for serial build/execute set to "" or "--jobs=1"
   VC_jobs: "--jobs=4"
 
 
