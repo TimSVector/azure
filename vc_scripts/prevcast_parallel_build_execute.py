@@ -63,6 +63,10 @@ class ParallelExecute(object):
             
         self.dryrun = args.dryrun
         self.tc_order = args.tc_order
+        
+        self.vcast_action = args.vcast_action
+        
+        print("**** vcast_action", self.vcast_action)
 
         if args.prioritize == None:
             self.priority_list = []
@@ -129,7 +133,7 @@ class ParallelExecute(object):
         level = compiler + "/" + testsuite
         full_name = "/".join([compiler, testsuite, env])
         exec_cmd = VCD + "/manage --project " + self.manageProject + self.use_ci + \
-            " --build-execute " + self.incremental + " --level " + level + \
+            " --" + self.vcast_action + " " + self.incremental + " --level " + level + \
             " --environment " + env + \
             " --output " + "_".join([compiler, testsuite, env])+ "_rebuild.html"
             
@@ -458,6 +462,8 @@ class ParallelExecute(object):
 
 # API for importing the module into another script
 def parallel_build_execute(in_args):
+
+    print (in_args)
     prev_argv = sys.argv
     try:
         sys.argv =  ["prevcast_parallel_build_execute.py"] + in_args.split(' ')

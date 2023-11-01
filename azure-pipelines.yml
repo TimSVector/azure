@@ -6,7 +6,7 @@
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and\or sell
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
@@ -29,22 +29,22 @@ variables:
   GIT_CLEAN_FLAGS: none
   
   # Relative path from checkout to the VectorCAST Project
-  VC_Manage_Project: "Project.vcm"
+  VC_Project: "Project.vcm"
 
-  # Environment Setup Script
+  # Environment Setup Script - Example shown
   VC_EnvSetup: "
     set VCAST_SRC_BASE=%CD%
     set path=%path%;c:/tools/gnat/2017/bin
     "
 
   # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
-  VC_UseCILicense: "set VCAST_USE_CI_LICENSES=TRUE"
+  VC_UseCILicense: "--ci"
 
   # Using VecteorCAST Change Based Testing otherwise set to ""
   VC_useCBT: "--incremental"
 
-  # Set parallel build count (Will use VectorCAST licenses)
-  VC_jobCount: 4
+  # Set VC_jobs build count (Will use VectorCAST licenses)
+  VC_jobs: "--jobs=4"
 
 
 pool: VCAST
@@ -54,16 +54,14 @@ name: vectorcast
 steps:
 
 - script: |
-    $(VC_UseCILicense)
     $(VC_EnvSetup)
-    %VECTORCAST_DIR%\vpython .\vc_scripts\parallel_build_execute.py --project "$(VC_Manage_Project)"  $(VC_useCBT) --jobs $(VC_jobCount)
-    %VECTORCAST_DIR%\vpython .\vc_scripts\azure_exec.py "$(VC_Manage_Project)" --metrics --reports
+    %VECTORCAST_DIR%\vpython .\vc_scripts\azure_exec.py "$(VC_Project)" --build-execute $VC_UseCILicense $VC_useCBT $VC_jobs --azure --cobertura --junit --aggregate
   displayName: 'VectorCAST Parallel Build-Execute'
 
 - task: PublishTestResults@2
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: 'xml_data\test_results*.xml'
+    testResultsFiles: '$(System.DefaultWorkingDirectory)\xml_data\junit\test_results*.xml'
     searchFolder: '$(System.DefaultWorkingDirectory)'
     testRunTitle: 'VectorCAST Test Results'
 

@@ -29,32 +29,48 @@ import generate_results
 import cobertura
 
 try:
-    import vector.apps.parallel.parallel_build_execute as parallel_build_execute
+    import prevcast_parallel_build_execute as parallel_build_execute
+#    import vector.apps.parallel.parallel_build_execute as parallel_build_execute
 except:
     import prevcast_parallel_build_execute as parallel_build_execute
 
 class AzureExecute(object):
-    def __init__(self, ManageProject, useCILicense, useCBT, level, environment, verbose, print_exc, timing, sonarqube, jobs, build_only):
+    #def __init__(self, ManageProject, useCILicense, useCBT, level, environment, verbose, print_exc, timing, sonarqube, jobs, build_only, build_execute):
+    def __init__(self, args):
 
         # setup default values
-        self.print_exc = print_exc
-        self.timing = timing
-        self.jobs = jobs
-        self.sonarqube = sonarqube
+        self.azure = args.azure
+        self.gitlab = args.gitlab
+        self.print_exc = args.print_exc
+        self.print_exc = args.print_exc
+        self.timing = args.timing
+        self.jobs = args.jobs
+        self.sonarqube = args.sonarqube
+        self.junit = args.junit
+        self.cobertura = args.cobertura
+        self.metrics = args.metrics
+        self.aggregate = args.aggregate
         
-        self.vcast_action = "build" if (build_only) else "build-execute"
-        self.vcast_action = "--vcast_action " + self.vcast_action
+        if args.build and not args.build_execute:
+            self.build_execute = "build"
+            self.vcast_action = "--vcast_action " + self.build_execute
+        elif args.build_execute:
+            self.build_execute = "build-execute"
+            self.vcast_action = "--vcast_action " + self.build_execute
+        else:
+            self.build_execute = ""
+            self.vcast_action = ""
         
-        self.verbose = verbose
-        self.FullMP = ManageProject
-        self.mpName = os.path.basename(ManageProject)[:-4]
+        self.verbose = args.verbose
+        self.FullMP = args.ManageProject
+        self.mpName = os.path.basename(args.ManageProject)[:-4]
 
-        if useCILicense:
+        if args.ci:
             self.useCI = " --ci "
         else:
             self.useCI = ""
 
-        if useCBT:
+        if args.incremental:
             self.useCBT = " --incremental "
         else:
             self.useCBT = ""
@@ -69,27 +85,27 @@ class AzureExecute(object):
         self.level_option = ""
 
         # if a manage level was specified...
-        if level:        
+        if args.level:        
             self.useLevelEnv = True
-            self.level = level
+            self.level = args.level
             
             # try level being Compiler/TestSuite
             try:
-                self.compiler, self.testsuite = level.split("/")
+                self.compiler, self.testsuite = args.level.split("/")
                 self.reportsName = "_" + self.compiler + "_" + self.testsuite
             except:
                 # just use the compiler name
-                self.compiler = level
+                self.compiler = args.level
                 self.reportsName = "_" + self.compiler
                 
-            self.level_option = "--level " + level + " "
+            self.level_option = "--level " + args.level + " "
 
         # if an environment was specified
-        if environment:
+        if args.environment:
             # afix the proper settings for commands later and report names
             self.useLevelEnv = True
-            self.environment = environment
-            self.env_option = "--environment " + environment + " "
+            self.environment = args.environment
+            self.env_option = "--environment " + args.environment + " "
             self.reportsName += "_" + self.environment
                   
         if self.useLevelEnv:
@@ -106,7 +122,7 @@ class AzureExecute(object):
             except:
                 print("Error removing file after failed to remove directory: " +  file)
     
-    def runMetrics(self):
+    def runJunitMetrics(self):
             
         self.cleanup("junit", "test_results_")
 
@@ -116,9 +132,10 @@ class AzureExecute(object):
         generate_results.buildReports(self.FullMP,self.level,self.environment, True, self.timing)
             
 
+    def runCoberturaMetrics(self):
         self.cleanup("cobertura", "coverage_results_")
-        cobertura.gitlab = False
-        cobertura.generateCoverageResults(self.FullMP)
+        cobertura.verbose = self.verbose
+        cobertura.generateCoverageResults(self.FullMP, self.azure)
 
     def runSonarQubeMetrics(self):
         self.cleanup("sonarqube", "test_results_")
@@ -126,9 +143,10 @@ class AzureExecute(object):
         generate_sonarqube_testresults.run(self.FullMP)
 
     def runReports(self):
-        self.manageWait.exec_manage_command ("--create-report=aggregate     --output=" + self.mpName + "_aggregate_report.html")
-        self.manageWait.exec_manage_command ("--create-report=metrics       --output=" + self.mpName + "_metrics_report.html")
-        # self.manageWait.exec_manage_command ("--create-report=environment   --output=" + self.mpName + "_environment_report.html")
+        if self.aggregate:
+            self.manageWait.exec_manage_command ("--create-report=aggregate     --output=" + self.mpName + "_aggregate_report.html")
+        if self.metrics:
+            self.manageWait.exec_manage_command ("--create-report=metrics       --output=" + self.mpName + "_metrics_report.html")
 
     def runExec(self):
 
@@ -156,13 +174,15 @@ class AzureExecute(object):
             callList = []
             for s in [pstr, jstr, cstr, tstr, cbtStr, ciStr, vbStr, self.vcast_action]:
                 if s != "":
-                    callList.append(s.strip())
+                    s = s.strip()
+                    callList.append(s)
 
             callStr = " ".join(callList)
             parallel_build_execute.parallel_build_execute(callStr)
 
-        else:            
-            build_log = self.manageWait.exec_manage_command ("--build-execute " + self.useCBT + self.level_option + self.env_option + output )
+        else:      
+            cmd = "--" + self.build_execute + " " + self.useCBT + self.level_option + self.env_option + output 
+            build_log = self.manageWait.exec_manage_command (cmd)
             open(self.build_log_name,"w").write(build_log)
 
 
@@ -170,19 +190,38 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('ManageProject', help='Manager Project Name')
-    parser.add_argument('--ci', help='Use CI Licenses', action="store_true", default = False)
-    parser.add_argument('--incremental', help='Use CBT', action="store_true", default = False)
-    parser.add_argument('--build', help='Only builds the VectorCAST Project', action="store_true", default = False)
-    parser.add_argument('--execute', help='Exeuction the VectorCAST Project', action="store_true", default = False)
-    parser.add_argument('--metrics', help='Run the metrics for VectorCAST Project', action="store_true", default = False)
-    parser.add_argument('--reports', help='Run the reports for VectorCAST Project', action="store_true", default = False)
-    parser.add_argument('--sonarqube', help='Generate test results in SonarQube Generic test execution report format', action="store_true", default = False)
-    parser.add_argument('--print_exc', help='Prints exceptions', action="store_true", default = False)
-    parser.add_argument('--timing', help='Prints timing information for metrics generation', action="store_true", default = False)
-    parser.add_argument('-v', '--verbose',   help='Enable verbose output', action="store_true", default = False)
-    parser.add_argument('-l', '--level',   help='Environment Name if only doing single environment.  Should be in the form of compiler/testsuite', default=None)
-    parser.add_argument('-e', '--environment',   help='Environment Name if only doing single environment.', default=None)
-    parser.add_argument('--jobs', help='Number of concurrent jobs (default = 1)', default="1")
+    
+    actionGroup = parser.add_argument_group('Script Actions', 'Options for the main tasks')
+    actionGroup.add_argument('--build-execute', help='Builds and exeuctes the VectorCAST Project', action="store_true", default = False)
+    parser_specify = actionGroup.add_mutually_exclusive_group()
+    parser_specify.add_argument('--build',       help='Only builds the VectorCAST Project', action="store_true", default = False)
+    parser_specify.add_argument('--incremental', help='Use Change Based Testing (Cannot be used with --build)', action="store_true", default = False)
+
+    metricsGroup = parser.add_argument_group('Metrics Options', 'Options generating metrics')
+    metricsGroup.add_argument('--cobertura', help='Builds and exeuctes the VectorCAST Project', action="store_true", default = False)
+    metricsGroup.add_argument('--junit', help='Builds and exeuctes the VectorCAST Project', action="store_true", default = False)
+    metricsGroup.add_argument('--sonarqube', help='Generate test results in SonarQube Generic test execution report format (CppUnit)', action="store_true", default = False)
+
+    reportGroup = parser.add_argument_group('Report Selection', 'VectorCAST Manage reports that can be generated')
+    reportGroup.add_argument('--aggregate', help='Generate aggregate coverage report VectorCAST Project', action="store_true", default = False)
+    reportGroup.add_argument('--metrics', help='Genenereate metrics reports for VectorCAST Project', action="store_true", default = False)
+
+    beGroup = parser.add_argument_group('Build/Execution Options', 'Options that effect build/execute operation')
+    
+    beGroup.add_argument('--jobs', help='Number of concurrent jobs (default = 1)', default="1")
+    beGroup.add_argument('--ci', help='Use Continuous Integration Licenses', action="store_true", default = False)
+    beGroup.add_argument('-l', '--level',   help='Environment Name if only doing single environment.  Should be in the form of compiler/testsuite', default=None)
+    beGroup.add_argument('-e', '--environment',   help='Environment Name if only doing single environment.', default=None)
+
+    parser_specify = beGroup.add_mutually_exclusive_group()
+    parser_specify.add_argument('--gitlab', help='Build using GitLab CI (default)', action="store_true", default = True)
+    parser_specify.add_argument('--azure',  help='Build using Azure DevOps', action="store_true", default = False)
+
+    actionGroup = parser.add_argument_group('Script Debug ', 'Options used for debugging the script')
+    actionGroup.add_argument('--print_exc', help='Prints exceptions', action="store_true", default = False)
+    actionGroup.add_argument('--timing', help='Prints timing information for metrics generation', action="store_true", default = False)
+    actionGroup.add_argument('-v', '--verbose',   help='Enable verbose output', action="store_true", default = False)
+    
 
     args = parser.parse_args()
     
@@ -196,15 +235,22 @@ if __name__ == '__main__':
         print ("exiting...")
         sys.exit(-1)
 
-    azExec = AzureExecute (args.ManageProject, args.ci, args.incremental, args.level, args.environment, args.verbose, args.print_exc, args.timing, args.sonarqube, args.jobs, args.build)
+    azExec = AzureExecute(args)
+    #.ManageProject, args.ci, args.incremental, args.level, args.environment, args.verbose, args.print_exc, args.timing, args.sonarqube, args.jobs, args.build, args.build_execute, args.gitlab, args.azure, args.aggregate, args.metrics)
 
-    if args.execute:
+    if args.build_execute or args.build:
         azExec.runExec()
         
-    if args.metrics:
-        azExec.runMetrics()
+    if args.cobertura:
+        azExec.runCoberturaMetrics()
 
-    if args.reports:
+    if args.junit:
+        azExec.runJunitMetrics()
+
+    if args.sonarqube:
+        azExec.runSonarQubeMetrics()
+
+    if args.aggregate or args.metrics:
         azExec.runReports()
         
     if args.sonarqube:

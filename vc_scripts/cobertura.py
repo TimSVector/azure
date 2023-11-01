@@ -33,11 +33,7 @@ from collections import defaultdict
 
 fileList = []
 
-global azure
-azure = False
-
 def write_xml(x, name, verbose = False):
-    global azure
     
     if verbose:
         print(etree.tostring(x,pretty_print=True))
@@ -378,9 +374,7 @@ def runCoverageResultsMP(packages, mpFile, verbose = False):
     return total_st, cov_st, total_br, cov_br, total_func, cov_func, total_fc, cov_fc, total_mcdc, cov_mcdc, branch_rate, line_rate, func_rate, FC_rate, MCDC_rate, vg
             
 
-def generateCoverageResults(inFile):
-
-    global azure
+def generateCoverageResults(inFile, azure):
     
     #coverage results
     coverages=etree.Element("coverage")
@@ -452,6 +446,6 @@ if __name__ == '__main__':
     except Exception as e:
         azure = False        
         
-    generateCoverageResults(inFile)
+    generateCoverageResults(inFile, azure)
 
 

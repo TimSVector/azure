@@ -22,25 +22,30 @@
 # THE SOFTWARE.
 #
 
-trigger: none
+trigger:
+- none
   
 variables:
   GIT_CLEAN_FLAGS: none
   
   # Relative path from checkout to the VectorCAST Project
-  VC_Manage_Project: "Project.vcm"
-  
- # Environment Setup Script
+  VC_Project: "Project.vcm"
+
+  # Environment Setup Script - Example shown
   VC_EnvSetup: "
     VCAST_SRC_BASE=`pwd`
     path=$path:/opt/tools/gnat/2017/bin
     "
 
   # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
-  VC_UseCILicense: "export VCAST_USE_CI_LICENSES=TRUE"
+  VC_UseCILicense: "--ci"
 
   # Using VecteorCAST Change Based Testing otherwise set to ""
   VC_useCBT: "--incremental"
+
+  # Set VC_jobs build count (Will use VectorCAST licenses)
+  VC_jobs: "--jobs=4"
+
 
 pool: VCAST
 
@@ -49,41 +54,34 @@ name: vectorcast
 steps:
 
 - script: |
-    $(VC_UseCILicense) 
-    $(VC_EnvSetup) 
-    $VECTORCAST_DIR/vpython ./vc_scripts/azure_exec.py "$(VC_Manage_Project)" $(VC_useCBT) --execute --metrics --reports
-  displayName: 'VectorCAST Build-Execute'
+    $(VC_EnvSetup)
+    $VECTORCAST_DIR/vpython ./vc_scripts/azure_exec.py "$(VC_Project)" --build-execute $VC_UseCILicense $VC_useCBT $VC_jobs --azure --cobertura --junit --aggregate
+    
+  displayName: 'VectorCAST Parallel Build-Execute'
 
 - task: PublishTestResults@2
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: '$(System.DefaultWorkingDirectory)/xml_data/test_results*.xml'
+    testResultsFiles: '$(System.DefaultWorkingDirectory)/xml_data/junit/test_results*.xml'
     searchFolder: '$(System.DefaultWorkingDirectory)'
     testRunTitle: 'VectorCAST Test Results'
 
 - task: PublishCodeCoverageResults@1
   inputs:
     codeCoverageTool: 'Cobertura'
-    summaryFileLocation: '$(System.DefaultWorkingDirectory)/xml_data/coverage_results*.xml'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/xml_data/cobertura/coverage_results*.xml'
     pathToSources: '$(System.DefaultWorkingDirectory)'
-    reportDirectory: 'html_reports'
     failIfCoverageEmpty: false
 
-- task: PublishPipelineArtifact@1
+- task: PublishBuildArtifacts@1
   inputs:
-    targetPath: '$(System.DefaultWorkingDirectory)/complete_build.log'
-    artifact: 'VectorCAST Complete Build Log'
-    publishLocation: 'pipeline'
+    PathtoPublish: '$(System.DefaultWorkingDirectory)/xml_data'
+    ArtifactName: 'XML Metrics'
+    publishLocation: 'Container'
 
-- task: PublishPipelineArtifact@1
+- task: PublishBuildArtifacts@1
   inputs:
-    targetPath: '$(System.DefaultWorkingDirectory)/html_reports'
-    artifactName: 'VectorCAST HTML Reports'
-    publishLocation: 'pipeline'
-
-- task: PublishPipelineArtifact@1
-  inputs:
-    targetPath: '$(System.DefaultWorkingDirectory)/xml_data'
-    artifactName: 'Test and Code Coverage Results Files'
-    publishLocation: 'pipeline'
+    PathtoPublish: '$(System.DefaultWorkingDirectory)/html_reports'
+    ArtifactName: 'HTML Reports'
+    publishLocation: 'Container'
 
