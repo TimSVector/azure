@@ -322,7 +322,7 @@ def buildReports(FullManageProjectName = None, level = None, envName = None, gen
         print("Version Check: " + str(time.time()))
 
     # cleaning up old builds
-    for path in ["xml_data/cobertura","xml_data/junit","html_reports"]:
+    for path in ["xml_data/junit","html_reports"]:
         # if the path exists, try to delete it
         if os.path.isdir(path):
             try:

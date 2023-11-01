@@ -22,7 +22,7 @@
 # THE SOFTWARE.
 #
 
-import os, subprocess,argparse, glob, sys
+import os, subprocess,argparse, glob, sys, shutil
 
 from managewait import ManageWait
 import generate_results 
@@ -115,18 +115,28 @@ class VectorCASTExecute(object):
             self.build_log_name = "build" + self.mpName + ".log"    
 
         self.manageWait = ManageWait(self.verbose, "", 30, 1, self.FullMP, self.ci)
-
+            
+        self.cleanup("junit", "test_results_")
+        self.cleanup("cobertura", "coverage_results_")
+        self.cleanup("sonarqube", "test_results_")
+        self.cleanup(".", self.mpName + "_aggregate_report.html")
+        self.cleanup(".", self.mpName + "_metrics_report.html")
+        
     def cleanup(self, dirName, fname):
         for file in glob.glob("xml_data/" + dirName+ "/" + fname + "*.*"):
             try:
                 os.remove(file);
             except:
                 print("Error removing file after failed to remove directory: " +  file)
+                
+        try:
+            shutil.rmtree("xml_data/" + dirName)
+        except:
+            pass
+
     
     def runJunitMetrics(self):
         print("Creating JUnit Metrics")
-            
-        self.cleanup("junit", "test_results_")
 
         generate_results.verbose = self.verbose
         generate_results.print_exc = self.print_exc
@@ -136,13 +146,11 @@ class VectorCASTExecute(object):
 
     def runCoberturaMetrics(self):
         print("Creating Cobertura Metrics")
-        self.cleanup("cobertura", "coverage_results_")
         cobertura.verbose = self.verbose
         cobertura.generateCoverageResults(self.FullMP, self.azure)
 
     def runSonarQubeMetrics(self):
         print("Creating SonarQube Metrics")
-        self.cleanup("sonarqube", "test_results_")
         import generate_sonarqube_testresults 
         generate_sonarqube_testresults.run(self.FullMP)
 
@@ -255,6 +263,4 @@ if __name__ == '__main__':
 
     if args.aggregate or args.metrics:
         vcExec.runReports()
-        
-    if args.sonarqube:
-        vcExec.runSonarQubeMetrics()
+		
