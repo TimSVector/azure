@@ -55,7 +55,7 @@ steps:
 
 - script: |
     $(VC_EnvSetup)
-    $VECTORCAST_DIR/vpython ./vc_scripts/azure_exec.py "$(VC_Project)" --build-execute $VC_UseCILicense $VC_useCBT $VC_jobs --azure --cobertura --junit --aggregate
+    $VECTORCAST_DIR/vpython ./vc_scripts/vcast_exec.py "$(VC_Project)" --build-execute $VC_UseCILicense $VC_useCBT $VC_jobs --azure --cobertura --junit --aggregate
     
   displayName: 'VectorCAST Parallel Build-Execute'
 
