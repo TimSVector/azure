@@ -8,9 +8,9 @@ This integration allows the user to execute
 [VectorCAST](http://vector.com/vectorcast) Projects in Azure
 
 Results can be published in the following formats
-* Coverage results to **_GitLab_** and **_SonarQube_**: **_Cobertura_** (xml_data/cobertura)
+* Coverage results to **_Azure_** and **_SonarQube_**: **_Cobertura_** (xml_data/cobertura)
 * Test Results
-    * To **_GitLab_**: **_JUnit_** (xml_data/junit)
+    * To **_Azure_**: **_JUnit_** (xml_data/junit)
     * To **_SonarQube_**: **_CppUnit_** (xml_data/sonarqube) 
 
 :warning: Due to the limiations of Cobertura plugin, only Statement and Branch results are reported
@@ -20,15 +20,15 @@ Two YAML CI files are provided:
 - linux/windows_execute.azure-ci.yml - Parallel/Serial build-execute of a VectorCAST Project with options of result output format 
 # Calling Action
 
-The python scrip `gitlab_exec.py` is the main driver for build/execute VectorCAST Projects.  You can run environments in parallel by specifying `--jobs #`
+The python scrip `vcast_exec.py` is the main driver for build/execute VectorCAST Projects.  You can run environments in parallel by specifying `--jobs #`
 
-The api for gitlab_exec.py follows:
+The api for vcast_exec.py follows:
 
 ```
     usage: vcast_exec.py [-h] [--build-execute] [--build | --incremental] [--cobertura] [--junit] [--sonarqube] [--aggregate] [--metrics] [--jobs JOBS] [--ci] [-l LEVEL] [-e ENVIRONMENT] [--gitlab | --azure] [--print_exc] [--timing] [-v] ManageProject
 
     positional arguments:
-      ManageProject         Manager Project Name
+      ManageProject         VectorCAST Project Name
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -74,6 +74,8 @@ The api for gitlab_exec.py follows:
 ```
 
 # Change log
+1.2024
+*Updated documentation and examples
 11.2023
 * Merged GitLab and Azure integrations
 10/2023:
