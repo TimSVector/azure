@@ -74,19 +74,20 @@ The api for vcast_exec.py follows:
 ```
 
 # Change log
-1.2024
+## Jan.2024
 *Updated documentation and examples
-11.2023
-* Merged GitLab and Azure integrations
+
+## Nov.2023
+- Merged GitLab and Azure integrations
 10/2023:
-* Removed unused scripts
-* Migrated actions for VectorCAST into one script git_exec.py (see below for api)
-* Added SonarQube test results output format (CppUnit) using `--sonarqube`
-* Moved results into individual directories under xml_data:
-    * xml/cobertura
-    * xml/junit
-    * xml/sonarqube
-* Fixed cobertura pathing issues
+- Removed unused scripts
+- Migrated actions for VectorCAST into one script git_exec.py (see below for api)
+- Added SonarQube test results output format (CppUnit) using `--sonarqube`
+- Moved results into individual directories under xml_data:
+    - xml/cobertura
+    - xml/junit
+    - xml/sonarqube
+- Fixed cobertura pathing issues
 
 
 # Licensing Information
