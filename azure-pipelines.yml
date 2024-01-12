@@ -37,13 +37,13 @@ variables:
     set path=%path%;c:/tools/gnat/2017/bin
     "
 
-  # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
+  # Use --ci for VectorCAST Continuous Integration (headless) licenses; otherwise, set to ""
   VC_UseCILicense: "--ci"
 
-  # Using VecteorCAST Change Based Testing otherwise set to ""
+  # Use "--incremental" to use VecteorCAST Change Based Testing; otherwise, set to ""
   VC_useCBT: "--incremental"
 
-  # Set VC_jobs build count (Will use VectorCAST licenses)
+  # Use "--jobs=##" to use parallel number of jobs per compiler node; otherwise, for serial build/execute set to "" or "--jobs=1"
   VC_jobs: "--jobs=4"
 
 
@@ -53,33 +53,33 @@ name: vectorcast
 
 steps:
 
-  - script: |
-      $(VC_EnvSetup)
-      %VECTORCAST_DIR%\vpython .\vc_scripts\vcast_exec.py "$(VC_Project)" --build-execute $VC_UseCILicense $VC_useCBT $VC_jobs --azure --cobertura --junit --aggregate
-    displayName: 'VectorCAST Parallel Build-Execute'
+- script: |
+    $(VC_EnvSetup)
+    %VECTORCAST_DIR%\vpython .\vc_scripts\vcast_exec.py "$(VC_Project)" --build-execute $VC_UseCILicense $VC_useCBT $VC_jobs --azure --cobertura --junit --aggregate
+  displayName: 'VectorCAST Parallel Build-Execute'
 
-  - task: PublishTestResults@2
-    inputs:
-      testResultsFormat: 'JUnit'
-      testResultsFiles: '$(System.DefaultWorkingDirectory)\xml_data\junit\test_results*.xml'
-      searchFolder: '$(System.DefaultWorkingDirectory)'
-      testRunTitle: 'VectorCAST Test Results'
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'JUnit'
+      testResultsFiles: '$(System.DefaultWorkingDirectory)/xml_data/junit/test_results*.xml'
+    searchFolder: '$(System.DefaultWorkingDirectory)'
+    testRunTitle: 'VectorCAST Test Results'
 
-  - task: PublishCodeCoverageResults@1
-    inputs:
-      codeCoverageTool: 'Cobertura'
-      summaryFileLocation: '$(System.DefaultWorkingDirectory)\xml_data\coverage_results*.xml'
-      pathToSources: '$(System.DefaultWorkingDirectory)'
-      failIfCoverageEmpty: false
+- task: PublishCodeCoverageResults@1
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/xml_data/cobertura/coverage_results*.xml'
+    pathToSources: '$(System.DefaultWorkingDirectory)'
+    failIfCoverageEmpty: false
 
-  - task: PublishBuildArtifacts@1
-    inputs:
-      PathtoPublish: '$(System.DefaultWorkingDirectory)\xml_data'
-      ArtifactName: 'XML Metrics'
-      publishLocation: 'Container'
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(System.DefaultWorkingDirectory)/xml_data'
+    ArtifactName: 'XML Metrics'
+    publishLocation: 'Container'
 
-  - task: PublishBuildArtifacts@1
-    inputs:
-      PathtoPublish: '$(System.DefaultWorkingDirectory)\html_reports'
-      ArtifactName: 'HTML Reports'
-      publishLocation: 'Container'
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(System.DefaultWorkingDirectory)/html_reports'
+    ArtifactName: 'HTML Reports'
+    publishLocation: 'Container'
