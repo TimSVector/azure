@@ -74,10 +74,10 @@ The api for vcast_exec.py follows:
 ```
 
 # Change log
-## Jan.2024
-*Updated documentation and examples
+## Jan 2024
+- Updated documentation and examples
 
-## Nov.2023
+## Nov 2023
 - Merged GitLab and Azure integrations
 10/2023:
 - Removed unused scripts
