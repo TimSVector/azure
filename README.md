@@ -88,8 +88,8 @@ The api for vcast_exec.py follows:
     * Added flag to process PC-lint Plus XML data into JSON format for GitLab codequality
         * Code Quality metrics will be seen in the Merge Request when both branches contain codequality reports
     
-## Jan 2024
-- Updated documentation and examples
+1/2024
+* Updated documentation and examples
 
 11/2023
 * Merged GitLab and Azure integrations
@@ -103,7 +103,6 @@ The api for vcast_exec.py follows:
     * xml/junit
     * xml/sonarqube
 * Fixed cobertura pathing issues
-
 
 # Licensing Information
 
