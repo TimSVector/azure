@@ -80,13 +80,14 @@ xml_status = ["N/A","PASS","FAIL","ERROR","N/A","N/A"]
 # This class generates the XML (JUnit based) report for the overall
 #
 class BaseGenerateXml(object):
-    def __init__(self, FullManageProjectName, verbose):
+    def __init__(self, FullManageProjectName, verbose, xml_data_dir = "xml_data"):
         projectName = os.path.splitext(os.path.basename(FullManageProjectName))[0]
         self.manageProjectName = projectName
-        self.unit_report_name = os.path.join("xml_data","sonarqube","test_results_"+ self.manageProjectName + ".xml")
+        self.xml_data_dir = xml_data_dir
+        self.unit_report_name = os.path.join(self.xml_data_dir,"sonarqube","test_results_"+ self.manageProjectName + ".xml")
         self.verbose = verbose
         self.print_exc = False
-        
+
         self.test_id = 1
         
         # get the VC langaguge and encoding
@@ -252,9 +253,10 @@ class GenerateManageXml (BaseGenerateXml):
                        skipReportsForSkippedEnvs = False,
                        report_failed_only = False,
                        no_full_reports = False,
-                       print_exc = False):
+                       print_exc = False,
+                       xml_data_dir = "xml_data"):
                    
-        super(GenerateManageXml, self).__init__(FullManageProjectName, verbose)
+        super(GenerateManageXml, self).__init__(FullManageProjectName, verbose, xml_data_dir)
         
         self.api = VCProjectApi(FullManageProjectName)
 
@@ -275,7 +277,7 @@ class GenerateManageXml (BaseGenerateXml):
         self.cleanupXmlDataDir()
 
     def cleanupXmlDataDir(self):
-        path="xml_data/sonarqube"
+        path=os.path.join(self.xml_data_dir,"sonarqube")
         import glob
         # if the path exists, try to delete all file in it
         if os.path.isdir(path):
@@ -317,7 +319,7 @@ class GenerateManageXml (BaseGenerateXml):
         build_dir = os.path.join(self.api.project.workspace,env.relative_working_directory)
         vceFile =  os.path.join(build_dir, env.name+".vce")
         
-        xmlUnitReportName = os.path.join(os.getcwd(), "xml_data" , "sonarqube", "test_results_" + key.replace("/","_") + ".xml")
+        xmlUnitReportName = os.path.join(self.xml_data_dir, "sonarqube", "test_results_" + key.replace("/","_") + ".xml")
 
         localXML = GenerateXml(self.FullManageProjectName, build_dir, env_name, comp, ts, 
                                key, xmlUnitReportName, None, None, False, 
@@ -325,7 +327,8 @@ class GenerateManageXml (BaseGenerateXml):
                                self.generate_exec_rpt_each_testcase, 
                                self.skipReportsForSkippedEnvs, 
                                self.report_failed_only,
-                               self.print_exc)
+                               self.print_exc,
+                               xml_data_dir = self.xml_data_dir)
                                
         localXML.topLevelAPI = self.api
         localXML.failDict = self.failDict
@@ -465,8 +468,8 @@ class GenerateManageXml (BaseGenerateXml):
 #
 class GenerateXml(BaseGenerateXml):
 
-    def __init__(self, FullManageProjectName, build_dir, env, compiler, testsuite, jenkins_name, unit_report_name, jenkins_link, jobNameDotted, verbose = False, cbtDict= None, generate_exec_rpt_each_testcase = True, skipReportsForSkippedEnvs = False, report_failed_only = False, print_exc = False):
-        super(GenerateXml, self).__init__(FullManageProjectName, verbose)
+    def __init__(self, FullManageProjectName, build_dir, env, compiler, testsuite, jenkins_name, unit_report_name, jenkins_link, jobNameDotted, verbose = False, cbtDict= None, generate_exec_rpt_each_testcase = True, skipReportsForSkippedEnvs = False, report_failed_only = False, print_exc = False, xml_data_dir = "xml_data"):
+        super(GenerateXml, self).__init__(FullManageProjectName, verbose, xml_data_dir = xml_data_dir)
 
         self.cbtDict = cbtDict
         self.FullManageProjectName = FullManageProjectName
@@ -496,7 +499,7 @@ class GenerateXml(BaseGenerateXml):
         self.compiler = compiler
         self.testsuite = testsuite
         self.jenkins_name = jenkins_name
-        self.unit_report_name = unit_report_name
+        self.unit_report_name = os.path.join(self.xml_data_dir,"sonarqube","test_results_"+ self.manageProjectName + ".xml")
         self.jenkins_link = jenkins_link
         self.jobNameDotted = jobNameDotted
         cov_path = os.path.join(build_dir,env + '.vcp')
@@ -615,6 +618,7 @@ class GenerateXml(BaseGenerateXml):
 
     def end_test_results_file(self):
         self.fh_data += "</TestRun>\n"
+        
         with open(self.unit_report_name, "w") as fd:
             fd.write(self.fh_data)
 
@@ -790,8 +794,8 @@ def __generate_xml(xml_file, envPath, env, xmlCoverReportName, xmlTestingReportN
         xml_file.generate_unit()
         print ("\nJunit plugin for Jenkins compatible file generated: " + xmlTestingReportName)
 
-def run(FullMP):
-    xml_file = GenerateManageXml(FullMP)
+def run(FullMP, xml_data_dir = "xml_data"):
+    xml_file = GenerateManageXml(FullMP, xml_data_dir=xml_data_dir)
     xml_file.generate_testresults()
     del xml_file 
 

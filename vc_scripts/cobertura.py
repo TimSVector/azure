@@ -374,7 +374,7 @@ def runCoverageResultsMP(packages, mpFile, verbose = False):
     return total_st, cov_st, total_br, cov_br, total_func, cov_func, total_fc, cov_fc, total_mcdc, cov_mcdc, branch_rate, line_rate, func_rate, FC_rate, MCDC_rate, vg
             
 
-def generateCoverageResults(inFile, azure):
+def generateCoverageResults(inFile, azure, xml_data_dir = "xml_data"):
     
     #coverage results
     coverages=etree.Element("coverage")
@@ -429,10 +429,11 @@ def generateCoverageResults(inFile, azure):
     source = etree.SubElement(sources, "source")
     source.text = "./"
 
-    if not os.path.exists("xml_data/cobertura"):
-        os.makedirs("xml_data/cobertura")
+    cob_data_dir = os.path.join(xml_data_dir,"cobertura")
+    if not os.path.exists(cob_data_dir):
+        os.makedirs(cob_data_dir)
         
-    write_xml(coverages, "xml_data/cobertura/coverage_results_" + name)
+    write_xml(coverages, os.path.join(cob_data_dir,"coverage_results_" + name))
              
 if __name__ == '__main__':
     

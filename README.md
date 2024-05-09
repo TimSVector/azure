@@ -1,6 +1,6 @@
 # vectorcast_azure
 
-Initial Integration Between VectorCAST and Microsoft Azure DevOps Pipeline
+Integration between VectorCAST and Microsoft Azure DevOps Pipeline
 
 # Summary
 
@@ -25,7 +25,8 @@ The python scrip `vcast_exec.py` is the main driver for build/execute VectorCAST
 The api for vcast_exec.py follows:
 
 ```
-    usage: vcast_exec.py [-h] [--build-execute] [--build | --incremental] [--cobertura] [--junit] [--sonarqube] [--aggregate] [--metrics] [--jobs JOBS] [--ci] [-l LEVEL] [-e ENVIRONMENT] [--gitlab | --azure] [--print_exc] [--timing] [-v] ManageProject
+    usage: vcast_exec.py [-h] [--build-execute] [--build | --incremental] [--output_dir OUTPUT_DIR] [--cobertura] [--junit] [--sonarqube] [--pclp_input PCLP_INPUT] [--exit_with_failed_count [EXIT_WITH_FAILED_COUNT]] [--aggregate] [--metrics] [--jobs JOBS] [--ci] [-l LEVEL] [-e ENVIRONMENT] [--gitlab | --azure] [--print_exc] [--timing] [-v] 
+                         ManageProject
 
     positional arguments:
       ManageProject         VectorCAST Project Name
@@ -43,9 +44,15 @@ The api for vcast_exec.py follows:
     Metrics Options:
       Options generating metrics
 
+      --output_dir OUTPUT_DIR
+                            Set the base directory of the xml_data directory. Default is the workspace directory
       --cobertura           Builds and exeuctes the VectorCAST Project
       --junit               Builds and exeuctes the VectorCAST Project
       --sonarqube           Generate test results in SonarQube Generic test execution report format (CppUnit)
+      --pclp_input PCLP_INPUT
+                            Generate static analysis results from PC-lint Plus XML file to generic static analysis format (codequality)
+      --exit_with_failed_count [EXIT_WITH_FAILED_COUNT]
+                            Returns failed test case count as script exit. Set a value to indicate a percentage above which the job will be marked as failed
 
     Report Selection:
       VectorCAST Manage reports that can be generated
@@ -74,20 +81,28 @@ The api for vcast_exec.py follows:
 ```
 
 # Change log
+
+5/2024
+* Merged GitLab and Azure integrations
+    * Added flag to fail job if unit tests fail (or above a certain percent)
+    * Added flag to process PC-lint Plus XML data into JSON format for GitLab codequality
+        * Code Quality metrics will be seen in the Merge Request when both branches contain codequality reports
+    
 ## Jan 2024
 - Updated documentation and examples
 
-## Nov 2023
-- Merged GitLab and Azure integrations
+11/2023
+* Merged GitLab and Azure integrations
+
 10/2023:
-- Removed unused scripts
-- Migrated actions for VectorCAST into one script git_exec.py (see below for api)
-- Added SonarQube test results output format (CppUnit) using `--sonarqube`
-- Moved results into individual directories under xml_data:
-    - xml/cobertura
-    - xml/junit
-    - xml/sonarqube
-- Fixed cobertura pathing issues
+* Removed unused scripts
+* Migrated actions for VectorCAST into one script git_exec.py (see below for api)
+* Added SonarQube test results output format (CppUnit) using `--sonarqube`
+* Moved results into individual directories under xml_data:
+    * xml/cobertura
+    * xml/junit
+    * xml/sonarqube
+* Fixed cobertura pathing issues
 
 
 # Licensing Information

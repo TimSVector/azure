@@ -34,9 +34,9 @@ def writeJunitFooter(junitfile):
     junitfile.write("  </testsuite>\n")
     junitfile.write("</testsuites>\n")
 
-def write_tc_data(currentEnv, unit_report_name, jobNameDotted, passed, failed, error, testcase_data):
+def write_tc_data(currentEnv, unit_report_name, jobNameDotted, passed, failed, error, testcase_data, xml_data_dir = "xml_data"):
 
-    fh = open("xml_data/junit/" + unit_report_name, "w")
+    fh = open(os.path.join(xml_data_dir,"junit",unit_report_name), "w")
 
     writeJunitHeader(currentEnv, fh, failed, failed+passed, unit_report_name)
     writeJunitData(fh, testcase_data)
@@ -180,7 +180,7 @@ def processSystemTestResultsData(lines):
     if firstEnvFound:
         write_tc_data(oldEnvName, unit_report_name, jobNameDotted, passed, failed, error, testcase_data)
         
-    return failed
+    return failed, passed
         
 def saveQATestStatus(mp, use_ci = ""):
     callStr = os.environ.get('VECTORCAST_DIR') + os.sep + "manage -p " + mp + use_ci + " --system-tests-status=" + os.path.basename(mp)[:-4] + "_system_tests_status.html"
@@ -208,11 +208,11 @@ def genQATestResults(mp, level = None, envName = None, verbose = False, use_ci =
         
     if err:
         print(out, err)
-    failed_count = processSystemTestResultsData(out.splitlines())
+    failed_count, passed_count = processSystemTestResultsData(out.splitlines())
     
     saveQATestStatus(mp, use_ci)
     
-    return failed_count
+    return failed_count, passed_count
         
 if __name__ == '__main__':
     genQATestResults(sys.argv[1])

@@ -368,6 +368,7 @@ class GenerateXml(BaseGenerateXml):
         cov_path = os.path.join(build_dir,env + '.vcp')
         unit_path = os.path.join(build_dir,env + '.vce')
         self.failed_count = 0
+        self.passed_count = 0
         
         if os.path.exists(cov_path) and os.path.exists(cov_path[:-4]):
             self.using_cover = True
@@ -458,7 +459,9 @@ class GenerateXml(BaseGenerateXml):
 
             except ImportError as e:
                 from generate_qa_results_xml import genQATestResults
-                self.failed_count += genQATestResults(self.FullManageProjectName, self.compiler+ "/" + self.testsuite, self.env, True, self.use_ci)
+                fc, pc = genQATestResults(self.FullManageProjectName, self.compiler+ "/" + self.testsuite, self.env, True, self.use_ci)
+                self.failed_count += fc
+                self.passed_count += pc
                 return
 
         else:
@@ -482,7 +485,8 @@ class GenerateXml(BaseGenerateXml):
                                             self.write_testcase(tc, tc.function.unit.name, tc.function.display_name)
 
             except AttributeError as e:
-                parse_traceback.parse(traceback.format_exc(), self.print_exc, self.compiler,  self.testsuite,  self.env,  self.build_dir)
+                import traceback
+                traceback.print_exc()
 
         self.end_test_results_file()
                 
@@ -507,6 +511,7 @@ class GenerateXml(BaseGenerateXml):
                 for st in env.system_tests:
                     if st.passed == st.total:
                         success += 1
+                        self.passed_count += 1
                     else:
                         failed += 1
                         errors += 1  
@@ -541,6 +546,7 @@ class GenerateXml(BaseGenerateXml):
                         errors += 1
                 else:
                     success += 1
+                    self.passed_count += 1
                     
         self.fh.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
         self.fh.write("<testsuites>\n")

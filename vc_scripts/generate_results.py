@@ -153,7 +153,7 @@ def delete_file(filename):
     if os.path.exists(filename):
         os.remove(filename)
         
-def genDataApiReports(FullManageProjectName, entry, use_ci):
+def genDataApiReports(FullManageProjectName, entry, use_ci, xml_data_dir):
 
     global print_exc
     
@@ -169,8 +169,8 @@ def genDataApiReports(FullManageProjectName, entry, use_ci):
         jobNameDotted = '.'.join([entry["compiler"], entry["testsuite"], entry["env"]])
         jenkins_name = level + "_" + env
         jenkins_link = env + "_" + level
-        xmlUnitReportName = os.getcwd() + os.sep + "xml_data/junit/test_results_" + level + "_" + env + ".xml"
-        xmlCoverReportName = os.getcwd() + os.sep + "xml_data/cobertura/coverage_results_" + level + "_" + env + ".xml"
+        xmlUnitReportName = os.path.join(xml_data_dir, "junit", "test_results_" + level + "_" + env + ".xml")
+        xmlCoverReportName = os.path.join(xml_data_dir,"cobertura","coverage_results_" + level + "_" + env + ".xml")
 
         xml_file = GenerateXml(FullManageProjectName,
                                entry["build_dir"],
@@ -195,12 +195,13 @@ def genDataApiReports(FullManageProjectName, entry, use_ci):
             traceback.print_exc()
     
     try:       
-        fail_count = xml_file.failed_count
+        failed_count = xml_file.failed_count
+        passed_count = xml_file.passed_count
         del xml_file 
-        return fail_count
+        return failed_count, passed_count
     except:
         traceback.print_exc()
-        return 0
+        return 0, 0
 
 def generateCoverReport(path, env, level ):
 
@@ -274,32 +275,39 @@ def generateIndividualReports(entry, envName):
             generateUTReport(unit_path , env, level)
 
 
-def useNewAPI(FullManageProjectName, manageEnvs, level, envName, use_ci):
+def useNewAPI(FullManageProjectName, manageEnvs, level, envName, use_ci, xml_data_dir = "xml_data"):
     failed_count = 0 
+    passed_count = 0 
 
-        
     for currentEnv in manageEnvs:
 
         if envName == None:
-            failed_count += genDataApiReports(FullManageProjectName, manageEnvs[currentEnv], use_ci)
+            fc, pc = genDataApiReports(FullManageProjectName, manageEnvs[currentEnv], use_ci, xml_data_dir)
+            failed_count += fc
+            passed_count += pc
+            
             generateIndividualReports(manageEnvs[currentEnv], envName)
             
         elif manageEnvs[currentEnv]["env"].upper() == envName.upper(): 
             env_level = manageEnvs[currentEnv]["compiler"] + "/" + manageEnvs[currentEnv]["testsuite"]
             
             if env_level.upper() == level.upper():
-                failed_count += genDataApiReports(FullManageProjectName, manageEnvs[currentEnv], use_ci)
+                fc, pc = genDataApiReports(FullManageProjectName, manageEnvs[currentEnv], use_ci, xml_data_dir)
+                failed_count += fc
+                passed_count += pc
                 generateIndividualReports(manageEnvs[currentEnv], envName)
         
     f = open("unit_test_fail_count.txt","w")
     f.write(str(failed_count))
     f.close()
+    
+    return failed_count, passed_count
 
 
 # build the Test Case Management Report for Manage Project
 # envName and level only supplied when doing reports for a sub-project
 # of a multi-job
-def buildReports(FullManageProjectName = None, level = None, envName = None, generate_individual_reports = True, timing = False, use_ci = ""):
+def buildReports(FullManageProjectName = None, level = None, envName = None, generate_individual_reports = True, timing = False, use_ci = "", xml_data_dir = "xml_data"):
 
     if timing:
         print("Start: " + str(time.time()))
@@ -322,7 +330,7 @@ def buildReports(FullManageProjectName = None, level = None, envName = None, gen
         print("Version Check: " + str(time.time()))
 
     # cleaning up old builds
-    for path in ["xml_data/junit","html_reports"]:
+    for path in [os.path.join(xml_data_dir,"junit"),"html_reports"]:
         # if the path exists, try to delete it
         if os.path.isdir(path):
             try:
@@ -355,6 +363,9 @@ def buildReports(FullManageProjectName = None, level = None, envName = None, gen
     
     
     ### Using new data API - 2019 and beyond
+    
+    failed_count = 0
+    passed_count = 0
     if timing:
         print("Cleanup: " + str(time.time()))
     if useNewReport:
@@ -367,7 +378,9 @@ def buildReports(FullManageProjectName = None, level = None, envName = None, gen
         if timing:
             print("Using DataAPI for reporting")
             print("Get Info: " + str(time.time()))
-        useNewAPI(FullManageProjectName, manageEnvs, level, envName, use_ci = use_ci)
+        fc, pc = useNewAPI(FullManageProjectName, manageEnvs, level, envName, use_ci = use_ci, xml_data_dir=xml_data_dir)
+        failed_count += fc
+        passed_count += pc
         if timing:
             print("XML and Individual reports: " + str(time.time()))
 
@@ -382,6 +395,8 @@ def buildReports(FullManageProjectName = None, level = None, envName = None, gen
 
     if timing:
         print("Complete: " + str(time.time()))
+        
+    return failed_count, passed_count
         
 if __name__ == '__main__':
 
@@ -446,10 +461,10 @@ if __name__ == '__main__':
     else:
         use_ci = ""
 
-    buildReports(args.ManageProject,args.level,args.environment,dont_generate_individual_reports, timing, use_ci)
+    failed_count, passed_count = buildReports(args.ManageProject,args.level,args.environment,dont_generate_individual_reports, timing, use_ci)
 
     if args.cobertura:
-        for file in glob.glob("xml_data/cobertura/coverage_results_*.*"):
+        for file in glob.glob(os.path.join(xml_data_dir,"cobertura","coverage_results_*.*")):
             try:
                 os.remove(file);
             except:
@@ -458,4 +473,4 @@ if __name__ == '__main__':
         cobertura.gitlab = args.gitlab
         cobertura.generateCoverageResults(args.ManageProject)
         
-        
+    sys.exit(failed_count)    

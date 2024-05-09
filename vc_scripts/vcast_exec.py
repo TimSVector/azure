@@ -50,6 +50,24 @@ class VectorCASTExecute(object):
         self.metrics = args.metrics
         self.aggregate = args.aggregate
         
+        if args.exit_with_failed_count == 'not present':
+            self.useJunitFailCountPct = False
+            self.junit_percent_to_fail = 0
+        elif args.exit_with_failed_count == '(default 0)':
+            self.useJunitFailCountPct = True
+            self.junit_percent_to_fail = 0
+        else:
+            self.useJunitFailCountPct = True
+            self.junit_percent_to_fail = int(args.exit_with_failed_count)
+        self.failed_count = 0
+        
+        if args.output_dir:
+            self.xml_data_dir = os.path.join(args.output_dir, 'xml_data')
+            if not os.path.exists(self.xml_data_dir):
+                os.makedirs(self.xml_data_dir)
+        else:
+            self.xml_data_dir = "xml_data"
+        
         if args.build and not args.build_execute:
             self.build_execute = "build"
             self.vcast_action = "--vcast_action " + self.build_execute
@@ -119,18 +137,19 @@ class VectorCASTExecute(object):
         self.cleanup("junit", "test_results_")
         self.cleanup("cobertura", "coverage_results_")
         self.cleanup("sonarqube", "test_results_")
+        self.cleanup("pclp", "pclp_results_")
         self.cleanup(".", self.mpName + "_aggregate_report.html")
         self.cleanup(".", self.mpName + "_metrics_report.html")
         
     def cleanup(self, dirName, fname):
-        for file in glob.glob("xml_data/" + dirName+ "/" + fname + "*.*"):
+        for file in glob.glob(os.path.join(self.xml_data_dir, dirName, fname + "*.*")):
             try:
                 os.remove(file);
             except:
                 print("Error removing file after failed to remove directory: " +  file)
                 
         try:
-            shutil.rmtree("xml_data/" + dirName)
+            shutil.rmtree(os.path.join(self.xml_data_dir , dirName))
         except:
             pass
 
@@ -141,18 +160,33 @@ class VectorCASTExecute(object):
         generate_results.verbose = self.verbose
         generate_results.print_exc = self.print_exc
         generate_results.timing = self.timing
-        generate_results.buildReports(self.FullMP,self.level,self.environment, True, self.timing)
-            
+        self.failed_count, self.passed_count = generate_results.buildReports(self.FullMP,self.level,self.environment, True, self.timing, xml_data_dir = self.xml_data_dir)
+        
+        # calculate the failed percentage
+        self.failed_pct = 100 * self.failed_count/ (self.failed_count + self.passed_count)
+        
+        # if the failed percentage is less that the specified limit (default = 0)
+        # clear the failed count
+        if self.useJunitFailCountPct and self.failed_pct < self.junit_percent_to_fail:
+            self.failed_count = 0
 
     def runCoberturaMetrics(self):
         print("Creating Cobertura Metrics")
         cobertura.verbose = self.verbose
-        cobertura.generateCoverageResults(self.FullMP, self.azure)
+        cobertura.generateCoverageResults(self.FullMP, self.azure, self.xml_data_dir)
 
     def runSonarQubeMetrics(self):
         print("Creating SonarQube Metrics")
         import generate_sonarqube_testresults 
-        generate_sonarqube_testresults.run(self.FullMP)
+        generate_sonarqube_testresults.run(self.FullMP, self.xml_data_dir)
+        
+    def runPcLintPlusMetrics(self, input_xml):
+        print("Creating PC-lint Plus Metrics")
+        import generate_plcp_reports 
+        os.makedirs(os.path.join(self.xml_data_dir,"pclp"))
+        report_name = os.path.join(self.xml_data_dir,"pclp","gl-code-quality-report.json")
+        print("PC-lint Plus Metrics file: ", report_name)
+        generate_plcp_reports.generate_reports(input_xml, output_gitlab = report_name)
 
     def runReports(self):
         if self.aggregate:
@@ -201,7 +235,7 @@ class VectorCASTExecute(object):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('ManageProject', help='Manager Project Name')
+    parser.add_argument('ManageProject', help='VectorCAST Project Name')
     
     actionGroup = parser.add_argument_group('Script Actions', 'Options for the main tasks')
     actionGroup.add_argument('--build-execute', help='Builds and exeuctes the VectorCAST Project', action="store_true", default = False)
@@ -210,9 +244,13 @@ if __name__ == '__main__':
     parser_specify.add_argument('--incremental', help='Use Change Based Testing (Cannot be used with --build)', action="store_true", default = False)
 
     metricsGroup = parser.add_argument_group('Metrics Options', 'Options generating metrics')
+    metricsGroup.add_argument('--output_dir', help='Set the base directory of the xml_data directory. Default is the workspace directory', default = None)
     metricsGroup.add_argument('--cobertura', help='Builds and exeuctes the VectorCAST Project', action="store_true", default = False)
     metricsGroup.add_argument('--junit', help='Builds and exeuctes the VectorCAST Project', action="store_true", default = False)
     metricsGroup.add_argument('--sonarqube', help='Generate test results in SonarQube Generic test execution report format (CppUnit)', action="store_true", default = False)
+    metricsGroup.add_argument('--pclp_input', help='Generate static analysis results from PC-lint Plus XML file to generic static analysis format (codequality)', action="store", default = None)
+    metricsGroup.add_argument('--exit_with_failed_count', help='Returns failed test case count as script exit.  Set a value to indicate a percentage above which the job will be marked as failed', 
+                               nargs='?', default='not present', const='(default 0)')
 
     reportGroup = parser.add_argument_group('Report Selection', 'VectorCAST Manage reports that can be generated')
     reportGroup.add_argument('--aggregate', help='Generate aggregate coverage report VectorCAST Project', action="store_true", default = False)
@@ -247,6 +285,7 @@ if __name__ == '__main__':
         print ("exiting...")
         sys.exit(-1)
 
+        
     vcExec = VectorCASTExecute(args)
 
     if args.build_execute or args.build:
@@ -255,12 +294,19 @@ if __name__ == '__main__':
     if args.cobertura:
         vcExec.runCoberturaMetrics()
 
-    if args.junit:
+    if args.junit or vcExec.useJunitFailCountPct:
         vcExec.runJunitMetrics()
 
     if args.sonarqube:
         vcExec.runSonarQubeMetrics()
 
+    if args.pclp_input:
+        vcExec.runPcLintPlusMetrics(args.pclp_input)
+
     if args.aggregate or args.metrics:
         vcExec.runReports()
-		
+
+
+    if vcExec.useJunitFailCountPct:
+        print("--exit_with_failed_count=" + args.exit_with_failed_count + " specified.  Fail Percent = " + str(round(vcExec.failed_pct,0)) + "% Return code: ", str(vcExec.failed_count))
+        sys.exit(vcExec.failed_count)
