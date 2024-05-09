@@ -386,13 +386,17 @@ class ParallelExecute(object):
         self.waiting_execution_queue = {}
 
         if self.tc_order:
-            testcase_list = self.get_testcase_list(api.Environment.all())
+            testcase_list_all = self.get_testcase_list(api.Environment.all())
         else:
-            testcase_list = api.Environment.all()
+            testcase_list_all = api.Environment.all()
 
-        for env in testcase_list:
+        testcase_list = []
+        for env in testcase_list_all:
             if not env.is_active:                
                 continue
+            testcase_list.append(env)
+                
+        for env in testcase_list:
             count = int(self.jobs)
             def_list = env.options['enums']['C_DEFINE_LIST'][0]
             if "VCAST_PARALLEL_PROCESS_COUNT" in def_list:
