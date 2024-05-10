@@ -18,6 +18,7 @@ Results can be published in the following formats
 Two YAML CI files are provided:
 
 - linux/windows_execute.azure-ci.yml - Parallel/Serial build-execute of a VectorCAST Project with options of result output format 
+
 # Calling Action
 
 The python scrip `vcast_exec.py` is the main driver for build/execute VectorCAST Projects.  You can run environments in parallel by specifying `--jobs #`
@@ -25,7 +26,14 @@ The python scrip `vcast_exec.py` is the main driver for build/execute VectorCAST
 The api for vcast_exec.py follows:
 
 ```
-    usage: vcast_exec.py [-h] [--build-execute] [--build | --incremental] [--output_dir OUTPUT_DIR] [--cobertura] [--junit] [--sonarqube] [--pclp_input PCLP_INPUT] [--exit_with_failed_count [EXIT_WITH_FAILED_COUNT]] [--aggregate] [--metrics] [--jobs JOBS] [--ci] [-l LEVEL] [-e ENVIRONMENT] [--gitlab | --azure] [--print_exc] [--timing] [-v] 
+    usage: vcast_exec.py [-h] [--build-execute] [--build | --incremental]
+                         [--output_dir OUTPUT_DIR] [--html_base_dir HTML_BASE_DIR]
+                         [--cobertura] [--junit] [--sonarqube]
+                         [--pclp_input PCLP_INPUT]
+                         [--exit_with_failed_count [EXIT_WITH_FAILED_COUNT]]
+                         [--aggregate] [--metrics] [--jobs JOBS] [--ci] [-l LEVEL]
+                         [-e ENVIRONMENT] [--gitlab | --azure] [--print_exc]
+                         [--timing] [-v]
                          ManageProject
 
     positional arguments:
@@ -45,14 +53,22 @@ The api for vcast_exec.py follows:
       Options generating metrics
 
       --output_dir OUTPUT_DIR
-                            Set the base directory of the xml_data directory. Default is the workspace directory
+                            Set the base directory of the xml_data directory.
+                            Default is the workspace directory
+      --html_base_dir HTML_BASE_DIR
+                            Set the base directory of the html_reports directory.
+                            The default is the workspace directory
       --cobertura           Builds and exeuctes the VectorCAST Project
       --junit               Builds and exeuctes the VectorCAST Project
-      --sonarqube           Generate test results in SonarQube Generic test execution report format (CppUnit)
+      --sonarqube           Generate test results in SonarQube Generic test
+                            execution report format (CppUnit)
       --pclp_input PCLP_INPUT
-                            Generate static analysis results from PC-lint Plus XML file to generic static analysis format (codequality)
+                            Generate static analysis results from PC-lint Plus XML
+                            file to generic static analysis format (codequality)
       --exit_with_failed_count [EXIT_WITH_FAILED_COUNT]
-                            Returns failed test case count as script exit. Set a value to indicate a percentage above which the job will be marked as failed
+                            Returns failed test case count as script exit. Set a
+                            value to indicate a percentage above which the job
+                            will be marked as failed
 
     Report Selection:
       VectorCAST Manage reports that can be generated
@@ -66,7 +82,8 @@ The api for vcast_exec.py follows:
       --jobs JOBS           Number of concurrent jobs (default = 1)
       --ci                  Use Continuous Integration Licenses
       -l LEVEL, --level LEVEL
-                            Environment Name if only doing single environment. Should be in the form of compiler/testsuite
+                            Environment Name if only doing single environment.
+                            Should be in the form of compiler/testsuite
       -e ENVIRONMENT, --environment ENVIRONMENT
                             Environment Name if only doing single environment.
       --gitlab              Build using GitLab CI (default)
@@ -87,6 +104,8 @@ The api for vcast_exec.py follows:
     * Added flag to fail job if unit tests fail (or above a certain percent)
     * Added flag to process PC-lint Plus XML data into JSON format for GitLab codequality
         * Code Quality metrics will be seen in the Merge Request when both branches contain codequality reports
+* Added creating an index.html that will have all the HTML docs listed
+
     
 1/2024
 * Updated documentation and examples

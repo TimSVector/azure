@@ -27,6 +27,7 @@ import os, subprocess,argparse, glob, sys, shutil
 from managewait import ManageWait
 import generate_results 
 import cobertura
+import create_index_html
 
 try:
     import vector.apps.parallel.parallel_build_execute as parallel_build_execute
@@ -49,6 +50,8 @@ class VectorCASTExecute(object):
         self.cobertura = args.cobertura
         self.metrics = args.metrics
         self.aggregate = args.aggregate
+        
+        self.html_base_dir = args.html_base_dir
         
         if args.exit_with_failed_count == 'not present':
             self.useJunitFailCountPct = False
@@ -102,6 +105,7 @@ class VectorCASTExecute(object):
         self.reportsName = ""
         self.env_option = ""
         self.level_option = ""
+        self.needIndexHtml = False
 
         # if a manage level was specified...
         if args.level:        
@@ -154,6 +158,24 @@ class VectorCASTExecute(object):
             pass
 
     
+    def generateIndexHtml(self):
+        try:
+            prj_dir = os.environ['CI_PROJECT_DIR'].replace("\\","/") + "/"
+        except:
+            prj_dir = os.getcwd().replace("\\","/") + "/"
+
+        tempHtmlReportList = glob.glob("*.html")
+        tempHtmlReportList += glob.glob(os.path.join(args.html_base_dir, "*.html"))
+        htmlReportList = []
+
+        for report in tempHtmlReportList:
+            if "index.html" not in report:
+                report = report.replace("\\","/")
+                report = report.replace(prj_dir,"")
+                htmlReportList.append(report)
+        
+        create_index_html.run(htmlReportList)
+    
     def runJunitMetrics(self):
         print("Creating JUnit Metrics")
 
@@ -169,6 +191,8 @@ class VectorCASTExecute(object):
         # clear the failed count
         if self.useJunitFailCountPct and self.failed_pct < self.junit_percent_to_fail:
             self.failed_count = 0
+            
+        self.needIndexHtml = True
 
     def runCoberturaMetrics(self):
         print("Creating Cobertura Metrics")
@@ -191,8 +215,10 @@ class VectorCASTExecute(object):
     def runReports(self):
         if self.aggregate:
             self.manageWait.exec_manage_command ("--create-report=aggregate     --output=" + self.mpName + "_aggregate_report.html")
+            self.needIndexHtml = True
         if self.metrics:
             self.manageWait.exec_manage_command ("--create-report=metrics       --output=" + self.mpName + "_metrics_report.html")
+            self.needIndexHtml = True
 
     def runExec(self):
 
@@ -245,6 +271,7 @@ if __name__ == '__main__':
 
     metricsGroup = parser.add_argument_group('Metrics Options', 'Options generating metrics')
     metricsGroup.add_argument('--output_dir', help='Set the base directory of the xml_data directory. Default is the workspace directory', default = None)
+    metricsGroup.add_argument("--html_base_dir", help='Set the base directory of the html_reports directory. The default is the workspace directory', default = "html_reports")
     metricsGroup.add_argument('--cobertura', help='Builds and exeuctes the VectorCAST Project', action="store_true", default = False)
     metricsGroup.add_argument('--junit', help='Builds and exeuctes the VectorCAST Project', action="store_true", default = False)
     metricsGroup.add_argument('--sonarqube', help='Generate test results in SonarQube Generic test execution report format (CppUnit)', action="store_true", default = False)
@@ -287,7 +314,7 @@ if __name__ == '__main__':
 
         
     vcExec = VectorCASTExecute(args)
-
+    
     if args.build_execute or args.build:
         vcExec.runExec()
         
@@ -310,3 +337,7 @@ if __name__ == '__main__':
     if vcExec.useJunitFailCountPct:
         print("--exit_with_failed_count=" + args.exit_with_failed_count + " specified.  Fail Percent = " + str(round(vcExec.failed_pct,0)) + "% Return code: ", str(vcExec.failed_count))
         sys.exit(vcExec.failed_count)
+        
+    if vcExec.needIndexHtml:
+        vcExec.generateIndexHtml()
+        
