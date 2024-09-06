@@ -58,8 +58,8 @@ The api for vcast_exec.py follows:
       --html_base_dir HTML_BASE_DIR
                             Set the base directory of the html_reports directory.
                             The default is the workspace directory
-      --cobertura           Builds and exeuctes the VectorCAST Project
-      --junit               Builds and exeuctes the VectorCAST Project
+      --cobertura           Generate coverage results in Cobertura xml format
+      --junit               Generate test results in Junit xml format
       --sonarqube           Generate test results in SonarQube Generic test
                             execution report format (CppUnit)
       --pclp_input PCLP_INPUT
@@ -75,6 +75,7 @@ The api for vcast_exec.py follows:
 
       --aggregate           Generate aggregate coverage report VectorCAST Project
       --metrics             Genenereate metrics reports for VectorCAST Project
+      --fullstatus          Genenereate full status reports for VectorCAST Project
 
     Build/Execution Options:
       Options that effect build/execute operation
@@ -98,6 +99,8 @@ The api for vcast_exec.py follows:
 ```
 
 # Change log
+9/2024
+* Added option to generate a --fullstatus report
 
 5/2024
 * Merged GitLab and Azure integrations

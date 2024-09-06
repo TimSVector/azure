@@ -35,6 +35,8 @@ import subprocess
 import time
 import traceback
 
+import getjobs
+
 from managewait import ManageWait
 try:
     from vector.apps.ReportBuilder.custom_report import CustomReport
@@ -56,6 +58,23 @@ wait_loops = 1
 
 verbose = False
 print_exc = True
+enabledEnvironmentArray = []
+
+def getEnabledEnvironments(MPname):
+    output = getjobs.printEnvironmentInfo(MPname, False)
+
+    for line in output.split("\n"):
+        if line.strip():
+            # type being system or unit test
+            compiler, testsuite, environment = line.split()
+            enabledEnvironmentArray.append([compiler, testsuite, environment])
+                       
+def environmentEnabled(comp,ts,env):
+    for c,t,e in enabledEnvironmentArray:
+        if comp == c and ts == t and env == e:
+            return True
+    print(comp + "/" + ts + "/" + env + ": Disabled")
+    return False 
 
 def runManageWithWait(command_line, silent=False):
     global verbose
@@ -128,6 +147,8 @@ def getManageEnvs(FullManageProjectName, use_ci = ""):
             build_dir = line.split(":",1)[-1].strip()
             #rare case where there's a problem with the environment
             if build_dir == "":
+                continue
+            if not environmentEnabled(compiler,testsuite,env_name):
                 continue
             build_dir_number = build_dir.split("/")[-1]
             level = compiler + "/" + testsuite + "/" + env_name # env_name.upper()
@@ -215,11 +236,14 @@ def generateCoverReport(path, env, level ):
         print("CR:       *" + env + " DataAPI is invalid")
         return 
         
-    if api.environment.status != ENVIRONMENT_STATUS_TYPE_T.NORMAL:
-        print("CR:    Skipping environment: "+ env)
-        print("CR:       *" + env + " status is not NORMAL")
-        return
-
+    try:
+        if api.environment.status != ENVIRONMENT_STATUS_TYPE_T.NORMAL:
+            print("CR:    Skipping environment: "+ env)
+            print("CR:       *" + env + " status is not NORMAL")
+            return
+    except:
+        pass        
+        
     report_name = "html_reports/" + level + "_" + env + ".html"
 
     try:
@@ -326,6 +350,8 @@ def buildReports(FullManageProjectName = None, level = None, envName = None, gen
     useNewReport = checkUseNewReportsAndAPI()
     manageEnvs = {}
 
+    getEnabledEnvironments(FullManageProjectName)
+
     if timing:
         print("Version Check: " + str(time.time()))
 
@@ -415,6 +441,8 @@ if __name__ == '__main__':
     parser.add_argument('--final',   help='Write Final JUnit Test Results file',  action="store_true")
     parser.add_argument('--gitlab',   help='Generate Cobertura in a format GitLab can use', action="store_true", default=False)
     parser.add_argument('--ci',                help='Use continuous integration licenses', action="store_true", default=False)
+    parser.add_argument('--output_dir', help='Set the base directory of the xml_data directory. Default is the workspace directory', default = "xml_data")
+    parser.add_argument('--azure',  help='Build using Azure DevOps', action="store_true", default = False)
 
     args = parser.parse_args()
     
@@ -461,8 +489,10 @@ if __name__ == '__main__':
     else:
         use_ci = ""
 
-    failed_count, passed_count = buildReports(args.ManageProject,args.level,args.environment,dont_generate_individual_reports, timing, use_ci)
+    xml_data_dir = args.output_dir
 
+    failed_count, passed_count = buildReports(args.ManageProject,args.level,args.environment,dont_generate_individual_reports, timing, use_ci, xml_data_dir)
+    
     if args.cobertura:
         for file in glob.glob(os.path.join(xml_data_dir,"cobertura","coverage_results_*.*")):
             try:
@@ -471,6 +501,6 @@ if __name__ == '__main__':
                 print("Error removing file after failed to remove directory: " + path + "/" + file)
         import cobertura
         cobertura.gitlab = args.gitlab
-        cobertura.generateCoverageResults(args.ManageProject)
+        cobertura.generateCoverageResults(args.ManageProject, args.azure)
         
     sys.exit(failed_count)    

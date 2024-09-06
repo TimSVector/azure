@@ -101,8 +101,9 @@ class ManageWait(object):
                         out_mgt = self.q.get(False) 
                         
                         if len(out_mgt) > 0:
+                            errors = ["Unable to obtain license",  "Licensed number of users already reached", "License server system does not support this feature"]
          
-                            if "Licensed number of users already reached" in out_mgt or "License server system does not support this feature" in out_mgt:
+                            if any(error in out_mgt for error in errors):
                                 license_outage = True
                                 # Change FLEXlm Error to FLEXlm Err.. to avoid Groovy script from
                                 # marking retry attempts as overall job failure
