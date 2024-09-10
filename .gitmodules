@@ -1,0 +1,3 @@
+[submodule "vc_scripts_submodule"]
+	path = vc_scripts
+	url = https://github.com/TimSVector/vc_scripts_submodule.git
