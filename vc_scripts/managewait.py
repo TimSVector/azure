@@ -46,7 +46,22 @@ class ManageWait(object):
         self.command_line = command_line
         self.mpName = mpName
         self.useCI = useCI
-
+        # get the VC langaguge and encoding
+        self.encFmt = 'utf-8'
+        try:
+            from vector.apps.DataAPI.configuration import vcastqt_global_options
+            self.lang = vcastqt_global_options.get('Translator','english')
+            if self.lang == "english":
+                self.encFmt = "utf-8"
+            if self.lang == "japanese":
+                self.encFmt = "shift-jis"
+            if self.lang == "chinese":
+                self.encFmt = "GBK"
+        except:
+            pass
+        
+        os.environ['PYTHONIOENCODING'] = self.encFmt
+                    
     def enqueueOutput(self, io_target, queue, logfile):
         while True:
             line = io_target.readline()
@@ -72,7 +87,7 @@ class ManageWait(object):
         return self.exec_manage(silent)
 
     def exec_manage(self, silent=False):
-        with open("command.log", 'a') as logfile:
+        with open("command.log", 'a', encoding=self.encFmt) as logfile:
             return self.__exec_manage(silent, logfile)
 
     def __exec_manage(self, silent, logfile):
@@ -87,7 +102,7 @@ class ManageWait(object):
         loop_count = 0
         while 1:
             loop_count += 1
-            p = subprocess.Popen(callStr,stdout=subprocess.PIPE,stderr=subprocess.STDOUT, shell=True, universal_newlines=True)
+            p = subprocess.Popen(callStr,stdout=subprocess.PIPE,stderr=subprocess.STDOUT, shell=True, universal_newlines=True, encoding=self.encFmt)
             
             self.startOutputThread(p.stdout, logfile)
             
@@ -101,6 +116,7 @@ class ManageWait(object):
                         out_mgt = self.q.get(False) 
                         
                         if len(out_mgt) > 0:
+                        
                             errors = ["Unable to obtain license",  "Licensed number of users already reached", "License server system does not support this feature"]
          
                             if any(error in out_mgt for error in errors):
@@ -134,7 +150,7 @@ class ManageWait(object):
                 break #leave outer while loop
                 
         try:
-            ret_out = unicode(ret_out,"utf-8")
+            ret_out = unicode(ret_out,self.encFmt)
         except:
             pass
             
@@ -142,6 +158,7 @@ class ManageWait(object):
  
 ## main
 if __name__ == '__main__':
+    
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose',   help='Enable verbose output', action="store_true")
     parser.add_argument('--command_line',   help='Command line to pass to Manage', required=True)

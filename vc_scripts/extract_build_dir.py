@@ -26,8 +26,9 @@ from __future__ import print_function
 
 import os
 import tarfile
+import sys
 
-def run():
+def run(leaveFiles = False):
 
     for file in os.listdir("."):
         if file.endswith("_build.tar"):
@@ -38,8 +39,16 @@ def run():
                 tf.close()
             except:
                 print("Problem with tarfile " + file + "...skipping")
+        if not leaveFiles:
             os.remove(file)
+
 
 if __name__ == '__main__':
 
-    run()
+    leaveFiles = False
+    try:
+        if len(sys.argv) > 1:
+            leaveFiles = True
+    except:
+        pass
+    run(leaveFiles)

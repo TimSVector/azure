@@ -439,7 +439,7 @@ if __name__ == '__main__':
     parser.add_argument('--cobertura',   help='Output coverage resutls in Cobertura format', action="store_true", default=False)
     parser.add_argument('--api',   help='Unused', type=int)
     parser.add_argument('--final',   help='Write Final JUnit Test Results file',  action="store_true")
-    parser.add_argument('--gitlab',   help='Generate Cobertura in a format GitLab can use', action="store_true", default=False)
+    parser.add_argument('--gitlab',   help='Generate Cobertura in a format GitLab can use', action="store_true", default=True)
     parser.add_argument('--ci',                help='Use continuous integration licenses', action="store_true", default=False)
     parser.add_argument('--output_dir', help='Set the base directory of the xml_data directory. Default is the workspace directory', default = "xml_data")
     parser.add_argument('--azure',  help='Build using Azure DevOps', action="store_true", default = False)
