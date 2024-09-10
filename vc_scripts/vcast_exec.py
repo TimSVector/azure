@@ -25,10 +25,15 @@
 import os, subprocess,argparse, glob, sys, shutil
 
 from managewait import ManageWait
-import generate_results 
+
 import cobertura
 import create_index_html
-
+try:
+    import generate_results 
+except:    
+    import importlib
+    generate_results = importlib.import_module("generate-results")
+    
 try:
     import vector.apps.parallel.parallel_build_execute as parallel_build_execute
 except:
@@ -222,13 +227,13 @@ class VectorCASTExecute(object):
 
     def runReports(self):
         if self.aggregate:
-            self.manageWait.exec_manage_command ("--create-report=aggregate     --output=" + self.mpName + "_aggregate_report.html")
+            self.manageWait.exec_manage_command ("--create-report=aggregate --output=" + self.mpName + "_aggregate_report.html")
             self.needIndexHtml = True
         if self.metrics:
-            self.manageWait.exec_manage_command ("--create-report=metrics       --output=" + self.mpName + "_metrics_report.html")
+            self.manageWait.exec_manage_command ("--create-report=metrics --output=" + self.mpName + "_metrics_report.html")
             self.needIndexHtml = True
         if self.fullstatus:
-            self.manageWait.exec_manage_command ("--full-status                 --output=" + self.mpName + "_full_status_report.html")
+            self.manageWait.exec_manage_command ("--full-status=" + self.mpName + "_full_status_report.html")
             self.needIndexHtml = True
 
     def runExec(self):

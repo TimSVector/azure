@@ -74,7 +74,7 @@ def getCoveredFunctionCount(source):
         
     return funcCovTotal, funcTotal
 
-def getFileXML(testXml, coverAPI, verbose = False):
+def getFileXML(testXml, coverAPI, verbose = False, extended = False):
 
     try:
         prj_dir = os.environ['CI_PROJECT_DIR'].replace("\\","/") + "/"
@@ -328,7 +328,7 @@ def processStatementBranchMCDC(fileApi, lines, extended = False):
                         
 def procesCoverage(coverXML, coverApi, extended = False):             
     
-    methods, lines = getFileXML(coverXML, coverApi)
+    methods, lines = getFileXML(coverXML, coverApi, extended = extended)
 
     if extended:
         for func in coverApi.functions:
@@ -350,7 +350,7 @@ def procesCoverage(coverXML, coverApi, extended = False):
                 func_branch_rate = float(func_cov_br) / float(func_total_br)
             
             method.attrib['branch-rate'] = str(func_branch_rate)
-            method.attrib['complexity'] = str(func.complexity)
+            method.attrib['complexity'] = str(func.metrics.complexity)
                     
             if func.metrics.function_calls > 0:
                 funcCallPercentStr = "{:.2f}".format(func.metrics.max_covered_function_calls_pct) + "% (" + str(func.metrics.max_covered_function_calls) + "/" + str(func.metrics.function_calls) + ")"    
