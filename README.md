@@ -2,6 +2,10 @@
 
 Integration between VectorCAST and Microsoft Azure DevOps Pipeline
 
+# Installation
+
+This repository uses a git submodule so make sure when you clone this repository, clone with _--recurse-submodules_ option
+
 # Summary
 
 This integration allows the user to execute
