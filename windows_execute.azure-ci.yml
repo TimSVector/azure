@@ -40,7 +40,7 @@ variables:
   # Using VectorCAST Continuous Integration (headless) licenses otherwise set to ""
   VC_UseCILicense: "--ci"
 
-  # Using VecteorCAST Change Based Testing otherwise set to ""
+  # Using VectorCAST Change Based Testing otherwise set to ""
   VC_useCBT: "--incremental"
 
   # Set VC_jobs build count (Will use VectorCAST licenses)
