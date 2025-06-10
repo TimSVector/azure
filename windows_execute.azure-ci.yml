@@ -59,14 +59,13 @@ steps:
     %VECTORCAST_DIR%\vpython .\vc_scripts\vcast_exec.py "$(VC_Project)" --build-execute $VC_UseCILicense $VC_useCBT $VC_jobs --azure --cobertura --junit --aggregate
   displayName: 'VectorCAST Parallel Build-Execute'
 
-- task: PublishTestResults@2
+- task: PublishTestResults@1
   inputs:
-    testResultsFormat: 'JUnit'
-      testResultsFiles: '$(System.DefaultWorkingDirectory)\xml_data\junit\test_results*.xml'
+    testResultsFiles: '$(System.DefaultWorkingDirectory)\xml_data\junit\test_results*.xml'
     searchFolder: '$(System.DefaultWorkingDirectory)'
     testRunTitle: 'VectorCAST Test Results'
 
-- task: PublishCodeCoverageResults@1
+- task: PublishCodeCoverageResults@2
   inputs:
     codeCoverageTool: 'Cobertura'
     summaryFileLocation: '$(System.DefaultWorkingDirectory)\xml_data\coverage_results*.xml'
